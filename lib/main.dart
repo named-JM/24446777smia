@@ -4,8 +4,9 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
+import 'package:qrqragain/login/create/login.dart';
 
-void main() => runApp(const MaterialApp(home: MyHome()));
+void main() => runApp(const MaterialApp(home: LoginScreen()));
 
 class MyHome extends StatelessWidget {
   const MyHome({Key? key}) : super(key: key);
