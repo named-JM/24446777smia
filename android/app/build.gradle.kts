@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.example.qrqragain"
-    compileSdk = 34 // Use the latest stable version
+    compileSdk = 35 // Use the latest stable version
 
     ndkVersion = "27.0.12077973"
 
