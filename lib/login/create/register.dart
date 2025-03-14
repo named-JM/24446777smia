@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
 
 class Registration extends StatefulWidget {
@@ -9,9 +11,40 @@ class Registration extends StatefulWidget {
 }
 
 class _RegistrationState extends State<Registration> {
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController fnameController = TextEditingController();
+  final TextEditingController lnameController = TextEditingController();
+  final TextEditingController passwordController = TextEditingController();
+  final TextEditingController confirmPassController = TextEditingController();
+
   Future<void> registerUser(BuildContext context) async {
-    //function for registering user, fetching api of php
+    final String apiUrl =
+        "$BASE_URL/register.php"; // Change this to your actual PHP URL
+    final response = await http.post(
+      Uri.parse(apiUrl),
+      body: {
+        "email_address": emailController.text,
+        "password": passwordController.text,
+        "first_name": fnameController.text,
+        "last_name": lnameController.text,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Registration successful!")));
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Registration failed. Try again.")),
+      );
+    }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,21 +66,32 @@ class _RegistrationState extends State<Registration> {
           children: <Widget>[
             //add logo png here or any image
             Text("Create Account"),
-            TextField(decoration: InputDecoration(labelText: 'Email')),
-            TextField(decoration: InputDecoration(labelText: 'Firstname')),
-            TextField(decoration: InputDecoration(labelText: 'Lastname')),
             TextField(
+              controller: emailController,
+              decoration: InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: fnameController,
+              decoration: InputDecoration(labelText: 'Firstname'),
+            ),
+            TextField(
+              controller: lnameController,
+              decoration: InputDecoration(labelText: 'Lastname'),
+            ),
+            TextField(
+              controller: passwordController,
               decoration: InputDecoration(labelText: 'Create your Password'),
               obscureText: true,
             ),
             TextField(
+              controller: confirmPassController,
               decoration: InputDecoration(labelText: 'Confirm Password'),
               obscureText: true,
             ),
 
             ElevatedButton(
               onPressed: () => registerUser(context),
-              child: const Text('Register'),
+              child: const Text('Sign Up'),
             ),
           ],
         ),
