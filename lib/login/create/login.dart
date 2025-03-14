@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/constants.dart';
+import 'package:qrqragain/home.dart';
 import 'package:qrqragain/login/create/register.dart';
-import 'package:qrqragain/main.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -31,7 +31,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ).showSnackBar(const SnackBar(content: Text("Login successful!")));
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => MyHome()),
+        MaterialPageRoute(builder: (context) => HomeScreen()),
       );
     } else {
       ScaffoldMessenger.of(
