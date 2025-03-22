@@ -29,6 +29,26 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   String qrData = '';
   ScreenshotController screenshotController = ScreenshotController();
 
+  List<dynamic> categories = [];
+
+  Future<void> fetchCategories() async {
+    final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
+    if (response.statusCode == 200) {
+      setState(() {
+        categories = jsonDecode(response.body)["categories"];
+        if (categories.isNotEmpty) {
+          selectedCategory = categories[0]["name"]; // Set default category
+        }
+      });
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCategories();
+  }
+
   Future<void> sendDataToServer(String base64QR) async {
     final url = '$BASE_URL/add_item.php'; // Change to your server URL
     final response = await http.post(
@@ -139,11 +159,11 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
                       setState(() => selectedCategory = value!);
                     },
                     items:
-                        ['Antibiotics', 'Painkillers', 'Vitamins']
+                        categories
                             .map(
-                              (category) => DropdownMenuItem(
-                                value: category,
-                                child: Text(category),
+                              (category) => DropdownMenuItem<String>(
+                                value: category["name"] as String,
+                                child: Text(category["name"] as String),
                               ),
                             )
                             .toList(),

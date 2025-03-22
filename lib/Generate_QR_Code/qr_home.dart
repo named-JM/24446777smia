@@ -33,7 +33,7 @@ class _QrHomeState extends State<QrHome> {
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => CreateCategory()),
+                    MaterialPageRoute(builder: (context) => CategoryPage()),
                   );
                 },
                 child: Text("Create Category"),
