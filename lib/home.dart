@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
+import 'package:qrqragain/Storage/storage.dart';
 import 'package:qrqragain/login/create/login.dart';
-import 'package:qrqragain/main.dart';
 import 'package:qrqragain/treatment_page.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -27,7 +27,7 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => MyHome()),
+                  MaterialPageRoute(builder: (context) => StorageHome()),
                 );
               },
               child: Text('Storage'),
