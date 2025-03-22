@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/constants.dart';
@@ -16,27 +18,55 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController passwordController = TextEditingController();
 
   Future<void> loginUser(BuildContext context) async {
-    //function here
+    final String email = emailController.text;
+    final String password = passwordController.text;
+
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please fill in all fields')));
+      return;
+    }
+
     final String apiUrl = "$BASE_URL/login.php";
     final response = await http.post(
       Uri.parse(apiUrl),
-      body: {
-        "email_address": emailController.text,
-        "password": passwordController.text,
-      },
+      body: {"email_address": email, "password": password},
     );
+
     if (response.statusCode == 200) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Login successful!")));
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeScreen()),
-      );
+      if (response.body.isNotEmpty) {
+        final data = jsonDecode(response.body); // Decode JSON response
+
+        if (data["status"] == "success") {
+          // Make sure login is successful
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Login successful!")));
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => HomeScreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(data["message"] ?? "Login failed. Try again."),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Empty response from server. Please try again later.",
+            ),
+          ),
+        );
+      }
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Login failed. Try again.")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Server error. Please try again later.")),
+      );
     }
   }
 
@@ -48,11 +78,16 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
-            TextField(decoration: InputDecoration(labelText: 'Email')),
             TextField(
+              controller: emailController,
+              decoration: InputDecoration(labelText: 'Email'),
+            ),
+            TextField(
+              controller: passwordController,
               decoration: InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
+
             //register nav text and button
             TextButton(
               onPressed: () {
