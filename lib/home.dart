@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:qrqragain/create_qr.dart';
+import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
 import 'package:qrqragain/login/create/login.dart';
 import 'package:qrqragain/main.dart';
 import 'package:qrqragain/treatment_page.dart';
@@ -45,7 +45,7 @@ class HomeScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => QRGeneratorPage()),
+                  MaterialPageRoute(builder: (context) => QrHome()),
                 );
               },
               child: Text('Generate QR Code'),
