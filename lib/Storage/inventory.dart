@@ -95,21 +95,21 @@ class _InventoryPageState extends State<InventoryPage> {
               onChanged: filterItems,
             ),
             SizedBox(height: 10),
-            DropdownButton<String>(
-              value: sortBy,
-              onChanged: (value) => sortItems(value!),
-              items: [
-                DropdownMenuItem(value: 'name', child: Text('Sort by Name')),
-                DropdownMenuItem(
-                  value: 'quantity',
-                  child: Text('Sort by Quantity'),
-                ),
-                DropdownMenuItem(
-                  value: 'date_added',
-                  child: Text('Sort by Date Added'),
-                ),
-              ],
-            ),
+            // DropdownButton<String>(
+            //   value: sortBy,
+            //   onChanged: (value) => sortItems(value!),
+            //   items: [
+            //     DropdownMenuItem(value: 'name', child: Text('Sort by Name')),
+            //     DropdownMenuItem(
+            //       value: 'quantity',
+            //       child: Text('Sort by Quantity'),
+            //     ),
+            //     DropdownMenuItem(
+            //       value: 'date_added',
+            //       child: Text('Sort by Date Added'),
+            //     ),
+            //   ],
+            // ),
             Expanded(
               child: ListView.builder(
                 itemCount: filteredItems.length,
