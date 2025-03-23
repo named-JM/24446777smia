@@ -1,10 +1,11 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/Treatment_Area/qr.dart';
+import 'package:qrqragain/Treatment_Area/remove_item.dart';
 import 'package:qrqragain/constants.dart';
-import 'package:qrqragain/remove_item.dart';
 
 class TreatmentPage extends StatefulWidget {
   @override
@@ -17,15 +18,66 @@ class _TreatmentPageState extends State<TreatmentPage> {
   @override
   void initState() {
     super.initState();
+    checkInternetAndSync(); // Ensure sync runs when app starts
     fetchMedicines();
   }
 
+  Future<void> checkInternetAndSync() async {
+    try {
+      final response = await http.get(
+        Uri.parse("$BASE_URL/check_connection.php"),
+      );
+      if (response.statusCode == 200) {
+        await syncPendingUpdates(); // Sync offline changes when online
+      }
+    } catch (e) {
+      print("No internet connection");
+    }
+  }
+
+  Future<void> syncPendingUpdates() async {
+    final pendingUpdatesBox = await Hive.openBox('pending_updates');
+    List<Map<String, dynamic>> updates = [];
+
+    for (var update in pendingUpdatesBox.values) {
+      updates.add(update);
+    }
+
+    if (updates.isNotEmpty) {
+      try {
+        final response = await http.post(
+          Uri.parse('$BASE_URL/sync_offline.php'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'updates': updates}),
+        );
+
+        if (response.statusCode == 200) {
+          print("Offline updates synced successfully!");
+          await pendingUpdatesBox.clear(); // Clear only on success
+        } else {
+          print(
+            "Failed to sync offline updates. Server Response: ${response.body}",
+          );
+        }
+      } catch (e) {
+        print("Error syncing offline updates: $e");
+      }
+    }
+  }
+
   Future<void> fetchMedicines() async {
-    final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
-    if (response.statusCode == 200) {
-      setState(() {
-        items = jsonDecode(response.body)['items'];
-      });
+    try {
+      final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
+
+      if (response.statusCode == 200) {
+        setState(() {
+          items = jsonDecode(response.body)['items'];
+        });
+      } else {
+        print("Failed to load items. Status Code: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error fetching medicines: $e");
     }
   }
 
@@ -43,9 +95,9 @@ class _TreatmentPageState extends State<TreatmentPage> {
         ),
       );
 
-      // if (updated == true) {
-      //   fetchItems(); // Refresh inventory if an item was updated
-      // }
+      if (updated == true) {
+        fetchMedicines(); // Refresh inventory if an item was updated
+      }
     }
   }
 
@@ -81,54 +133,3 @@ class _TreatmentPageState extends State<TreatmentPage> {
     );
   }
 }
-
-// class QRScannerScreen extends StatefulWidget {
-//   @override
-//   _QRScannerScreenState createState() => _QRScannerScreenState();
-// }
-
-// class _QRScannerScreenState extends State<QRScannerScreen> {
-//   final GlobalKey qrKey = GlobalKey(debugLabel: 'QR');
-//   QRViewController? controller;
-//   String scannedData = 'Scan a QR code';
-
-//   @override
-//   void reassemble() {
-//     super.reassemble();
-//     if (controller != null) {
-//       controller!.pauseCamera();
-//       controller!.resumeCamera();
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(title: Text('QR Code Scanner')),
-//       body: Column(
-//         children: [
-//           Expanded(
-//             flex: 5,
-//             child: QRView(key: qrKey, onQRViewCreated: _onQRViewCreated),
-//           ),
-//           Expanded(flex: 1, child: Center(child: Text(scannedData))),
-//         ],
-//       ),
-//     );
-//   }
-
-//   void _onQRViewCreated(QRViewController controller) {
-//     this.controller = controller;
-//     controller.scannedDataStream.listen((scanData) {
-//       setState(() {
-//         scannedData = scanData.code ?? 'No data';
-//       });
-//     });
-//   }
-
-//   @override
-//   void dispose() {
-//     controller?.dispose();
-//     super.dispose();
-//   }
-// }
