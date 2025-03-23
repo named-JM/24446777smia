@@ -203,24 +203,82 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Text('Login'),
+        automaticallyImplyLeading: false,
+      ),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
             TextField(
               controller: emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: InputDecoration(
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.lightGreen),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.lightGreen),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                labelText: 'Email',
+                labelStyle: TextStyle(color: Colors.black),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
             ),
+            SizedBox(height: 20),
             TextField(
               controller: passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: InputDecoration(
+                enabledBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.lightGreen),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderSide: BorderSide(color: Colors.lightGreen),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                labelText: 'Password',
+                labelStyle: TextStyle(color: Colors.black),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
               obscureText: true,
             ),
             SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => loginUser(context),
-              child: const Text('Login'),
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(
+                horizontal: 16.0,
+              ), // Set margin on both sides
+              child: ElevatedButton(
+                onPressed: () => loginUser(context),
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.lightGreen, // Text color
+                  padding: EdgeInsets.symmetric(vertical: 16.0), // Padding
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18), // Rounded corners
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: 18, // Font size
+                    fontWeight: FontWeight.bold, // Font weight
+                  ),
+                ),
+                child: const Text('Login'),
+              ),
             ),
             TextButton(
               onPressed: () {
