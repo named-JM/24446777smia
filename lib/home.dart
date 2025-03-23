@@ -4,10 +4,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
-import 'package:qrqragain/Storage/storage.dart';
+import 'package:qrqragain/Storage/inventory.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
-import 'package:qrqragain/treatment_page.dart';
+import 'package:qrqragain/Treatment_Area/treatment_page.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => StorageHome()),
+                  MaterialPageRoute(builder: (context) => InventoryPage()),
                 );
               },
               child: Text('Storage'),
