@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:screenshot/screenshot.dart';
@@ -141,15 +143,47 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   }
 
   Future<void> saveQR() async {
-    final directory = await getApplicationDocumentsDirectory();
-    final filePath = '${directory.path}/qr_code.png';
-    screenshotController
-        .captureAndSave(directory.path, fileName: 'qr_code.png')
-        .then((value) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('QR Code saved at $filePath')));
-        });
+    try {
+      // Request storage permission (needed for Android 10 and below)
+      Future<void> requestPermissions() async {
+        if (Platform.isAndroid) {
+          final status = await Permission.storage.request();
+          if (status.isDenied || status.isPermanentlyDenied) {
+            openAppSettings();
+            return;
+          }
+        }
+      }
+
+      // Get the downloads directory
+      Directory? downloadsDirectory = Directory('/storage/emulated/0/Download');
+      if (!downloadsDirectory.existsSync()) {
+        downloadsDirectory = await getExternalStorageDirectory();
+      }
+      if (downloadsDirectory == null)
+        throw Exception("Could not find download directory");
+
+      // Define file path
+      final filePath = '${downloadsDirectory.path}/qr_code.png';
+
+      // Capture screenshot and save
+      final imagePath = await screenshotController.captureAndSave(
+        downloadsDirectory.path,
+        fileName: 'qr_code.png',
+      );
+
+      if (imagePath != null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('QR Code saved in Downloads')));
+      } else {
+        throw Exception("Failed to save QR code");
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving QR code: $e')));
+    }
   }
 
   @override
@@ -248,7 +282,9 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
                       ),
                       SizedBox(height: 20),
                       ElevatedButton(
-                        onPressed: saveQRAndSendToServer,
+                        onPressed: () async {
+                          await saveQR(); // Save the QR Code to Downloads
+                        },
                         child: Text('Download QR'),
                       ),
                     ],
