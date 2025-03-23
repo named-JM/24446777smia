@@ -1,18 +1,163 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
 import 'package:qrqragain/Storage/storage.dart';
+import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
 import 'package:qrqragain/treatment_page.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool hasLowStock = false;
+  List<dynamic> lowStockItems = [];
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Ensure first API call after UI build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkLowStock();
+    });
+
+    _startAutoCheck(); // Start auto-refresh
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel(); // Stop timer when the widget is disposed
+    super.dispose();
+  }
+
+  void _startAutoCheck() {
+    _timer = Timer.periodic(Duration(seconds: 10), (timer) {
+      checkLowStock();
+    });
+  }
+
+  Future<void> checkLowStock() async {
+    final response = await http.get(Uri.parse("$BASE_URL/notif.php"));
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      print("API Response: ${response.body}");
+
+      bool newHasLowStock = data['low_stock'] ?? false;
+      List<dynamic> newLowStockItems = List.from(data['low_stock_items'] ?? []);
+
+      // Only update state if there are changes to avoid unnecessary rebuilds
+      if (mounted &&
+          (newHasLowStock != hasLowStock ||
+              newLowStockItems.length != lowStockItems.length)) {
+        setState(() {
+          hasLowStock = newHasLowStock;
+          lowStockItems = newLowStockItems;
+        });
+      }
+    } else {
+      print("Failed to fetch data: ${response.statusCode}");
+    }
+  }
+
+  void showNotificationSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          height:
+              MediaQuery.of(context).size.height * 0.3, // 80% of screen height
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              Text(
+                hasLowStock ? "Low Stock Alert!" : "No Low Stock Items",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              if (hasLowStock)
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: lowStockItems.length,
+                    itemBuilder: (context, index) {
+                      final item = lowStockItems[index];
+                      return ListTile(
+                        leading: Icon(Icons.warning, color: Colors.red),
+                        title: Text(item['item_name']),
+                        subtitle: Text("Remaining: ${item['quantity']}"),
+                      );
+                    },
+                  ),
+                )
+              else
+                Expanded(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text("All items are sufficiently stocked."),
+                        SizedBox(height: 5),
+                        ElevatedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: Text("Dismiss"),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home'),
+        leading: Stack(
+          children: [
+            IconButton(
+              icon: Stack(
+                children: [
+                  Icon(Icons.notifications, size: 30),
+                  if (hasLowStock)
+                    Positioned(
+                      right: 3,
+                      top: 3,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              onPressed: () async {
+                showNotificationSheet();
+              },
+            ),
+          ],
+        ),
         actions: [
           IconButton(
-            icon: Icon(Icons.logout),
+            icon: Icon(Icons.logout, size: 30),
             onPressed: () {
               _showLogoutDialog(context);
             },
