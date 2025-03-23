@@ -78,7 +78,7 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
       }),
     );
     print("Server Response: ${response.body}");
-
+    clearFormFields();
     if (response.statusCode == 200) {
       final result = jsonDecode(response.body);
       ScaffoldMessenger.of(
@@ -93,22 +93,22 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
     }
   }
 
-  // void clearFormFields() {
-  //   serialController.clear();
-  //   brandController.clear();
-  //   itemNameController.clear();
-  //   specController.clear();
-  //   unitController.clear();
-  //   costController.clear();
-  //   quantityController.clear();
-  //   mfgDateController.clear();
-  //   expDateController.clear();
-  //   setState(() {
-  //     selectedCategory =
-  //         categories.isNotEmpty ? categories[0]["name"] : 'Antibiotics';
-  //     qrData = '';
-  //   });
-  // }
+  void clearFormFields() {
+    serialController.clear();
+    brandController.clear();
+    itemNameController.clear();
+    specController.clear();
+    unitController.clear();
+    costController.clear();
+    quantityController.clear();
+    mfgDateController.clear();
+    expDateController.clear();
+    setState(() {
+      selectedCategory =
+          categories.isNotEmpty ? categories[0]["name"] : 'Antibiotics';
+      qrData = '';
+    });
+  }
 
   void generateQR() {
     setState(() {
@@ -163,19 +163,20 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
       if (downloadsDirectory == null)
         throw Exception("Could not find download directory");
 
-      // Define file path
-      final filePath = '${downloadsDirectory.path}/qr_code.png';
+      // Define file path with item name
+      final fileName = '${itemNameController.text}_qr_code.png';
+      final filePath = '${downloadsDirectory.path}/$fileName';
 
       // Capture screenshot and save
       final imagePath = await screenshotController.captureAndSave(
         downloadsDirectory.path,
-        fileName: 'qr_code.png',
+        fileName: fileName,
       );
 
       if (imagePath != null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('QR Code saved in Downloads')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('QR Code saved as $fileName in Downloads')),
+        );
       } else {
         throw Exception("Failed to save QR code");
       }
@@ -259,6 +260,7 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
                 child: ElevatedButton(
                   onPressed: () async {
                     generateQR(); // Generate QR code data
+                    saveQR(); // Save the QR Code to Downloads
                     await saveQRAndSendToServer(); // Capture and send QR code image
                   },
                   style: ElevatedButton.styleFrom(
