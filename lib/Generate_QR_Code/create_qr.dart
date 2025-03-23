@@ -21,12 +21,9 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   final TextEditingController specController = TextEditingController();
   final TextEditingController unitController = TextEditingController();
   final TextEditingController costController = TextEditingController();
-  final TextEditingController quantityController =
-      TextEditingController(); // New Quantity Field
-  final TextEditingController mfgDateController =
-      TextEditingController(); // New Mfg Date Field
-  final TextEditingController expDateController =
-      TextEditingController(); // New Exp Date Field
+  final TextEditingController quantityController = TextEditingController();
+  final TextEditingController mfgDateController = TextEditingController();
+  final TextEditingController expDateController = TextEditingController();
   String selectedCategory = 'Antibiotics';
   String qrData = '';
   ScreenshotController screenshotController = ScreenshotController();
@@ -187,6 +184,23 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
     }
   }
 
+  Future<void> _selectDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null && picked != DateTime.now()) {
+      setState(() {
+        controller.text = "${picked.month}/${picked.year}";
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -227,18 +241,23 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
               _buildTextField('Brand Name', brandController),
               _buildTextField('Item Name', itemNameController),
               _buildTextField('Specification', specController),
-              _buildTextField(
+              _buildNumberField(
                 'Quantity',
                 quantityController,
-              ), // Added Quantity Field
+              ), // Updated Quantity Field
               Row(
                 children: [
                   Expanded(child: _buildTextField('Unit', unitController)),
                   SizedBox(width: 10),
                   Expanded(
-                    child: _buildTextField(
-                      'Mfg Date (MM/YYYY)',
-                      mfgDateController,
+                    child: GestureDetector(
+                      onTap: () => _selectDate(context, mfgDateController),
+                      child: AbsorbPointer(
+                        child: _buildTextField(
+                          'Mfg Date (MM/YYYY)',
+                          mfgDateController,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -248,9 +267,14 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
                   Expanded(child: _buildTextField('Cost', costController)),
                   SizedBox(width: 10),
                   Expanded(
-                    child: _buildTextField(
-                      'Exp Date (MM/YYYY)',
-                      expDateController,
+                    child: GestureDetector(
+                      onTap: () => _selectDate(context, expDateController),
+                      child: AbsorbPointer(
+                        child: _buildTextField(
+                          'Exp Date (MM/YYYY)',
+                          expDateController,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -272,7 +296,6 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
                   ),
                 ),
               ),
-
               SizedBox(height: 20),
               if (qrData.trim().isNotEmpty)
                 Center(
@@ -307,6 +330,59 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
         decoration: InputDecoration(
           labelText: label,
           border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          suffixIcon: SizedBox(
+            height: 30, // Reduce height
+            width: 30, // Adjust width as needed
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: 14, // Reduce button height
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_drop_up, size: 16), // Smaller icon
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      int currentValue = int.tryParse(controller.text) ?? 0;
+                      setState(() {
+                        controller.text = (currentValue + 1).toString();
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(
+                  height: 14, // Reduce button height
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_drop_down, size: 16), // Smaller icon
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      int currentValue = int.tryParse(controller.text) ?? 0;
+                      if (currentValue > 0) {
+                        setState(() {
+                          controller.text = (currentValue - 1).toString();
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
