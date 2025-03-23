@@ -8,21 +8,19 @@ import 'package:qrqragain/constants.dart';
 Future<void> syncInventory() async {
   final box = await Hive.openBox('inventory');
 
-  // Check if Hive already has data
-  if (box.isNotEmpty) {
-    print("Offline inventory already exists.");
-    return;
-  }
-
   final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
 
   if (response.statusCode == 200) {
-    List<dynamic> inventoryList = jsonDecode(response.body);
+    List<dynamic> inventoryList = jsonDecode(response.body)['items'];
+
+    await box.clear(); // Ensure the offline storage is fully updated
 
     for (var item in inventoryList) {
       box.put(item['qr_code_data'], {
         'item_name': item['item_name'],
-        'quantity': item['quantity'],
+        'quantity':
+            int.tryParse(item['quantity'].toString()) ??
+            0, // Ensure it's stored as an int
       });
     }
 
@@ -51,7 +49,9 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
 
     var item = inventoryBox.get(widget.qrCodeData);
     if (item != null) {
-      int currentQuantity = item['quantity'];
+      int currentQuantity =
+          int.tryParse(item['quantity'].toString()) ??
+          0; // Ensure it's parsed as an int
       int removeQuantity = int.tryParse(quantityController.text) ?? 0;
 
       if (removeQuantity > 0 && removeQuantity <= currentQuantity) {
