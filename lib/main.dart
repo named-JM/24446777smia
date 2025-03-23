@@ -7,15 +7,16 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 import 'package:qrqragain/constants.dart';
-import 'package:qrqragain/login/create/login.dart';
 import 'package:qrqragain/offline_db.dart';
+import 'package:qrqragain/splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Hive.initFlutter();
   await Hive.openBox('inventory'); // Open the local database
 
-  runApp(MaterialApp(home: LoginScreen()));
+  // runApp(MaterialApp(home: LoginScreen()));
+  runApp(MaterialApp(home: SplashScreen()));
 }
 
 Future<void> syncPendingUpdates() async {
