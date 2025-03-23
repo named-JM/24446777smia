@@ -50,11 +50,18 @@ dependencies:
   shared_preferences: ^2.0.6
   permission_handler: ^11.4.0
   
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
   hive_generator: ^2.0.1
   build_runner: ^2.3.3
+  flutter_launcher_icons: ^0.13.1 
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/Bulacan_Seal.svg.png"  # Path to your icon (1024x1024 recommended)
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
