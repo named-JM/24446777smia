@@ -7,6 +7,10 @@ import 'package:qrqragain/Storage/update.dart';
 import 'package:qrqragain/constants.dart';
 
 class InventoryPage extends StatefulWidget {
+  final List<dynamic> lowStockItems;
+
+  InventoryPage({this.lowStockItems = const []});
+
   @override
   _InventoryPageState createState() => _InventoryPageState();
 }
@@ -37,12 +41,17 @@ class _InventoryPageState extends State<InventoryPage> {
     setState(() {
       searchQuery = query;
       filteredItems =
-          items.where((item) {
-            return item['item_name'].toLowerCase().contains(
-                  query.toLowerCase(),
-                ) ||
-                item['category'].toLowerCase().contains(query.toLowerCase());
-          }).toList();
+          items
+              .where(
+                (item) =>
+                    item['item_name'].toLowerCase().contains(
+                      query.toLowerCase(),
+                    ) ||
+                    item['category'].toLowerCase().contains(
+                      query.toLowerCase(),
+                    ),
+              )
+              .toList();
     });
   }
 
@@ -69,12 +78,17 @@ class _InventoryPageState extends State<InventoryPage> {
     );
 
     if (scannedQR != null) {
-      Navigator.push(
+      bool? updated = await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => UpdateItemPage(qrCodeData: scannedQR),
         ),
       );
+
+      // If an item was updated, refresh the inventory
+      if (updated == true) {
+        fetchItems();
+      }
     }
   }
 
@@ -95,36 +109,26 @@ class _InventoryPageState extends State<InventoryPage> {
               onChanged: filterItems,
             ),
             SizedBox(height: 10),
-            // DropdownButton<String>(
-            //   value: sortBy,
-            //   onChanged: (value) => sortItems(value!),
-            //   items: [
-            //     DropdownMenuItem(value: 'name', child: Text('Sort by Name')),
-            //     DropdownMenuItem(
-            //       value: 'quantity',
-            //       child: Text('Sort by Quantity'),
-            //     ),
-            //     DropdownMenuItem(
-            //       value: 'date_added',
-            //       child: Text('Sort by Date Added'),
-            //     ),
-            //   ],
-            // ),
+
             Expanded(
-              child: ListView.builder(
-                itemCount: filteredItems.length,
-                itemBuilder: (context, index) {
-                  final item = filteredItems[index];
-                  return Card(
-                    child: ListTile(
-                      title: Text(item['item_name']),
-                      subtitle: Text(
-                        'Category: ${item['category']} \nQuantity: ${item['quantity']}',
+              child: RefreshIndicator(
+                onRefresh: fetchItems, // Pull-to-refresh
+                child: ListView.builder(
+                  itemCount: filteredItems.length,
+                  itemBuilder: (context, index) {
+                    final item = filteredItems[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(item['item_name']),
+                        subtitle: Text(
+                          'Category: ${item['category']} \nQuantity: ${item['quantity']}',
+                        ),
+                        onTap:
+                            openQRScanner, // Open scanner when tapping an item
                       ),
-                      onTap: openQRScanner, // Open scanner when tapping an item
-                    ),
-                  );
-                },
+                    );
+                  },
+                ),
               ),
             ),
           ],
