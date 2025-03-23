@@ -1,13 +1,38 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
 import 'package:qrqragain/Storage/inventory.dart';
+import 'package:qrqragain/Treatment_Area/treatment_page.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
-import 'package:qrqragain/Treatment_Area/treatment_page.dart';
+import 'package:qrqragain/offline_db.dart';
+
+class SyncService {
+  static Future<void> syncPendingUpdates() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none)
+      return; // Skip if offline
+
+    List<Map<String, dynamic>> updates =
+        await LocalDatabase.getPendingUpdates();
+    for (int i = 0; i < updates.length; i++) {
+      var update = updates[i];
+      var response = await http.post(
+        Uri.parse('$BASE_URL/sync.php'),
+        body: jsonEncode(update),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        LocalDatabase.deletePendingUpdate(i); // Remove after successful sync
+      }
+    }
+  }
+}
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -44,26 +69,41 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> checkLowStock() async {
-    final response = await http.get(Uri.parse("$BASE_URL/notif.php"));
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      // Show a message if offline
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('No internet connection.')));
+      return;
+    }
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      print("API Response: ${response.body}");
+    try {
+      final response = await http.get(Uri.parse("$BASE_URL/notif.php"));
 
-      bool newHasLowStock = data['low_stock'] ?? false;
-      List<dynamic> newLowStockItems = List.from(data['low_stock_items'] ?? []);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        print("API Response: ${response.body}");
 
-      // Only update state if there are changes to avoid unnecessary rebuilds
-      if (mounted &&
-          (newHasLowStock != hasLowStock ||
-              newLowStockItems.length != lowStockItems.length)) {
-        setState(() {
-          hasLowStock = newHasLowStock;
-          lowStockItems = newLowStockItems;
-        });
+        bool newHasLowStock = data['low_stock'] ?? false;
+        List<dynamic> newLowStockItems = List.from(
+          data['low_stock_items'] ?? [],
+        );
+
+        // Only update state if there are changes to avoid unnecessary rebuilds
+        if (mounted &&
+            (newHasLowStock != hasLowStock ||
+                newLowStockItems.length != lowStockItems.length)) {
+          setState(() {
+            hasLowStock = newHasLowStock;
+            lowStockItems = newLowStockItems;
+          });
+        }
+      } else {
+        print("Failed to fetch data: ${response.statusCode}");
       }
-    } else {
-      print("Failed to fetch data: ${response.statusCode}");
+    } catch (e) {
+      print("Error fetching low stock data: $e");
     }
   }
 
@@ -78,7 +118,7 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context) {
         return Container(
           height:
-              MediaQuery.of(context).size.height * 0.3, // 80% of screen height
+              MediaQuery.of(context).size.height * 0.3, // 30% of screen height
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
