@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:qrqragain/Storage/qr.dart';
+import 'package:qrqragain/Storage/update.dart';
 import 'package:qrqragain/constants.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -60,6 +62,22 @@ class _InventoryPageState extends State<InventoryPage> {
     });
   }
 
+  void openQRScanner() async {
+    String? scannedQR = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => QRScannerPage()),
+    );
+
+    if (scannedQR != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => UpdateItemPage(qrCodeData: scannedQR),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -103,6 +121,7 @@ class _InventoryPageState extends State<InventoryPage> {
                       subtitle: Text(
                         'Category: ${item['category']} \nQuantity: ${item['quantity']}',
                       ),
+                      onTap: openQRScanner, // Open scanner when tapping an item
                     ),
                   );
                 },

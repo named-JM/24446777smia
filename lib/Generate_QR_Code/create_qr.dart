@@ -91,6 +91,23 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
     }
   }
 
+  // void clearFormFields() {
+  //   serialController.clear();
+  //   brandController.clear();
+  //   itemNameController.clear();
+  //   specController.clear();
+  //   unitController.clear();
+  //   costController.clear();
+  //   quantityController.clear();
+  //   mfgDateController.clear();
+  //   expDateController.clear();
+  //   setState(() {
+  //     selectedCategory =
+  //         categories.isNotEmpty ? categories[0]["name"] : 'Antibiotics';
+  //     qrData = '';
+  //   });
+  // }
+
   void generateQR() {
     setState(() {
       qrData =
@@ -117,6 +134,7 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
       String base64Image = base64Encode(imageBytes);
 
       await sendDataToServer(base64Image);
+      // clearFormFields();
     } catch (e) {
       print('Error saving QR: $e');
     }

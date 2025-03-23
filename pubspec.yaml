@@ -39,7 +39,10 @@ dependencies:
   qr_flutter: ^4.1.0
   screenshot: ^3.0.0
   path_provider: ^2.0.15
-
+  qr_code_dart_scan: ^0.10.0  # For scanning QR codes from images
+  image_picker: ^1.1.2
+#  qr_code_tools: ^0.1.0
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
