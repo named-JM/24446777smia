@@ -267,14 +267,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () => loginUser(context),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
-                  backgroundColor: Colors.lightGreen, // Text color
-                  padding: EdgeInsets.symmetric(vertical: 16.0), // Padding
+                  backgroundColor: Colors.lightGreen,
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18), // Rounded corners
+                    borderRadius: BorderRadius.circular(18),
                   ),
                   textStyle: TextStyle(
-                    fontSize: 18, // Font size
-                    fontWeight: FontWeight.bold, // Font weight
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 child: const Text('Login'),

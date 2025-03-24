@@ -208,32 +208,88 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => InventoryPage()),
-                );
-              },
-              child: Text('Storage'),
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(
+                horizontal: 16.0,
+              ), // Set margin on both sides
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => InventoryPage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.lightGreen,
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('Storage'),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => TreatmentPage()),
-                );
-              },
-              child: Text('Treatment Area'),
+            SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(
+                horizontal: 16.0,
+              ), // Set margin on both sides
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => TreatmentPage()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.lightGreen,
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('Treatment Page'),
+              ),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => QrHome()),
-                );
-              },
-              child: Text('Generate QR Code'),
+            SizedBox(height: 20),
+            Container(
+              width: double.infinity,
+              margin: EdgeInsets.symmetric(
+                horizontal: 16.0,
+              ), // Set margin on both sides
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => QrHome()),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.lightGreen,
+                  padding: EdgeInsets.symmetric(vertical: 16.0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  textStyle: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                child: const Text('Generate QR Code'),
+              ),
             ),
           ],
         ),
