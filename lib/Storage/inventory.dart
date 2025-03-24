@@ -121,7 +121,9 @@ class _InventoryPageState extends State<InventoryPage> {
                       child: ListTile(
                         title: Text(item['item_name']),
                         subtitle: Text(
-                          'Category: ${item['category']} \nQuantity: ${item['quantity']}',
+                          'Category: ${item['category']} \n'
+                          'Quantity: ${item['quantity']} \n'
+                          'Exp Date: ${item['exp_date'] ?? 'N/A'}', // Display expiration date
                         ),
                         onTap:
                             openQRScanner, // Open scanner when tapping an item

@@ -42,6 +42,23 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
     }
   }
 
+  Future<void> _selectDate(
+    BuildContext context,
+    TextEditingController controller,
+  ) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        controller.text = "${picked.month}/${picked.year}";
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,21 +67,85 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
-            TextField(
-              controller: quantityController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(labelText: 'Enter Quantity'),
-            ),
-            TextField(
-              controller: expirationDateController,
-              keyboardType: TextInputType.datetime,
-              decoration: InputDecoration(
-                labelText: 'Enter Expiration Date (YYYY-MM-DD)',
+            _buildNumberField('Enter Quantity', quantityController),
+            GestureDetector(
+              onTap: () => _selectDate(context, expirationDateController),
+              child: AbsorbPointer(
+                child: _buildTextField(
+                  'Enter Expiration Date (MM/YYYY)',
+                  expirationDateController,
+                ),
               ),
             ),
             SizedBox(height: 20),
             ElevatedButton(onPressed: updateItem, child: Text('Update Item')),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          suffixIcon: SizedBox(
+            height: 30, // Reduce height
+            width: 30, // Adjust width as needed
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: 14, // Reduce button height
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_drop_up, size: 16), // Smaller icon
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      int currentValue = int.tryParse(controller.text) ?? 0;
+                      setState(() {
+                        controller.text = (currentValue + 1).toString();
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(
+                  height: 14, // Reduce button height
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_drop_down, size: 16), // Smaller icon
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      int currentValue = int.tryParse(controller.text) ?? 0;
+                      if (currentValue > 0) {
+                        setState(() {
+                          controller.text = (currentValue - 1).toString();
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
