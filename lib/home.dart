@@ -71,7 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> checkLowStock() async {
     var connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
-      // Show a message if offline
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('No internet connection.')));
@@ -85,18 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = json.decode(response.body);
         print("API Response: ${response.body}");
 
-        bool newHasLowStock = data['low_stock'] ?? false;
-        List<dynamic> newLowStockItems = List.from(
-          data['low_stock_items'] ?? [],
-        );
+        List<dynamic> newItems = List.from(data['items'] ?? []);
 
-        // Only update state if there are changes to avoid unnecessary rebuilds
-        if (mounted &&
-            (newHasLowStock != hasLowStock ||
-                newLowStockItems.length != lowStockItems.length)) {
+        if (mounted) {
           setState(() {
-            hasLowStock = newHasLowStock;
-            lowStockItems = newLowStockItems;
+            lowStockItems = newItems;
+            hasLowStock = newItems.isNotEmpty;
           });
         }
       } else {
@@ -107,6 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  //only warning and text are colord.
   void showNotificationSheet() {
     showModalBottomSheet(
       context: context,
@@ -117,13 +111,12 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       builder: (context) {
         return Container(
-          height:
-              MediaQuery.of(context).size.height * 0.3, // 30% of screen height
+          height: MediaQuery.of(context).size.height * 0.5,
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
               Text(
-                hasLowStock ? "Low Stock Alert!" : "No Low Stock Items",
+                hasLowStock ? "Low Stock / Expiry Alert!" : "All items are OK",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 10),
@@ -133,10 +126,45 @@ class _HomeScreenState extends State<HomeScreen> {
                     itemCount: lowStockItems.length,
                     itemBuilder: (context, index) {
                       final item = lowStockItems[index];
-                      return ListTile(
-                        leading: Icon(Icons.warning, color: Colors.red),
-                        title: Text(item['item_name']),
-                        subtitle: Text("Remaining: ${item['quantity']}"),
+
+                      // Default colors
+                      Color iconColor = Colors.black;
+                      Color textColor = Colors.black;
+
+                      // Color coding based on status
+                      if (item['status'] == "warning") {
+                        iconColor = Colors.yellow[800]!;
+                        textColor = Colors.yellow[900]!;
+                      }
+                      if (item['status'] == "near_expiry") {
+                        iconColor = Colors.orange[800]!;
+                        textColor = Colors.orange[900]!;
+                      }
+                      if (item['status'] == "expired") {
+                        iconColor = Colors.red[800]!;
+                        textColor = Colors.red[900]!;
+                      }
+
+                      return Card(
+                        color: Colors.white,
+                        elevation: 3,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: Icon(Icons.warning, color: iconColor),
+                          title: Text(
+                            item['item_name'],
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: textColor,
+                            ),
+                          ),
+                          subtitle: Text(
+                            'Remaining ${item['quantity']} \n'
+                            'Expiration: ${item['exp_date'] ?? 'N/A'}',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -168,6 +196,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: Text(
+          "AIMS",
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
         leading: Stack(
           children: [
             IconButton(
@@ -204,95 +237,107 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.symmetric(
-                horizontal: 16.0,
-              ), // Set margin on both sides
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => InventoryPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.lightGreen,
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                child: const Text('Storage'),
-              ),
-            ),
-            SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.symmetric(
-                horizontal: 16.0,
-              ), // Set margin on both sides
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => TreatmentPage()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.lightGreen,
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+
+      body: Column(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: <Widget>[
+                SizedBox(height: 50),
+                Image.asset('assets/bulacan_logo.png', width: 250, height: 250),
+                SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                  ), // Set margin on both sides
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => InventoryPage(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.lightGreen,
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: const Text('Storage'),
                   ),
                 ),
-                child: const Text('Treatment Page'),
-              ),
-            ),
-            SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.symmetric(
-                horizontal: 16.0,
-              ), // Set margin on both sides
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => QrHome()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.lightGreen,
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+                SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                  ), // Set margin on both sides
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TreatmentPage(),
+                        ),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.lightGreen,
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: const Text('Treatment Page'),
                   ),
                 ),
-                child: const Text('Generate QR Code'),
-              ),
+                SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(
+                    horizontal: 16.0,
+                  ), // Set margin on both sides
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => QrHome()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.lightGreen,
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: const Text('Generate QR Code'),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
