@@ -84,7 +84,11 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = json.decode(response.body);
         print("API Response: ${response.body}");
 
-        List<dynamic> newItems = List.from(data['items'] ?? []);
+        // Filter out items where status is "normal"
+        List<dynamic> newItems =
+            (data['items'] ?? [])
+                .where((item) => item['status'] != "normal")
+                .toList();
 
         if (mounted) {
           setState(() {
@@ -100,7 +104,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  //only warning and text are colord.
   void showNotificationSheet() {
     showModalBottomSheet(
       context: context,
@@ -111,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       builder: (context) {
         return Container(
-          height: MediaQuery.of(context).size.height * 0.5,
+          height: MediaQuery.of(context).size.height * 0.4,
           padding: EdgeInsets.all(16.0),
           child: Column(
             children: [
@@ -119,54 +122,27 @@ class _HomeScreenState extends State<HomeScreen> {
                 hasLowStock ? "Low Stock / Expiry Alert!" : "All items are OK",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              SizedBox(height: 10),
+              SizedBox(height: 25),
               if (hasLowStock)
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: lowStockItems.length,
-                    itemBuilder: (context, index) {
-                      final item = lowStockItems[index];
+                  child: ListView(
+                    children:
+                        lowStockItems.expand((item) {
+                          List<Widget> notifications = [];
 
-                      // Default colors
-                      Color iconColor = Colors.black;
-                      Color textColor = Colors.black;
+                          for (var status in item['statuses']) {
+                            notifications.add(
+                              _buildNotificationTile(
+                                itemName: item['item_name'],
+                                quantity: item['quantity'],
+                                expiry: item['exp_date'],
+                                status: status,
+                              ),
+                            );
+                          }
 
-                      // Color coding based on status
-                      if (item['status'] == "warning") {
-                        iconColor = Colors.yellow[800]!;
-                        textColor = Colors.yellow[900]!;
-                      }
-                      if (item['status'] == "near_expiry") {
-                        iconColor = Colors.orange[800]!;
-                        textColor = Colors.orange[900]!;
-                      }
-                      if (item['status'] == "expired") {
-                        iconColor = Colors.red[800]!;
-                        textColor = Colors.red[900]!;
-                      }
-
-                      return Card(
-                        color: Colors.white,
-                        elevation: 3,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: ListTile(
-                          leading: Icon(Icons.warning, color: iconColor),
-                          title: Text(
-                            item['item_name'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: textColor,
-                            ),
-                          ),
-                          subtitle: Text(
-                            'Remaining ${item['quantity']} \n'
-                            'Expiration: ${item['exp_date'] ?? 'N/A'}',
-                          ),
-                        ),
-                      );
-                    },
+                          return notifications;
+                        }).toList(),
                   ),
                 )
               else
@@ -189,6 +165,79 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  // 🔹 Updated Helper Function for Multiple Statuses
+  Widget _buildNotificationTile({
+    required String itemName,
+    required int quantity,
+    required String? expiry,
+    required String status,
+  }) {
+    IconData icon;
+    Color iconColor;
+    Color textColor;
+    String statusText;
+
+    switch (status) {
+      case "low_stock":
+        icon = Icons.warning;
+        iconColor = Colors.red[800]!;
+        textColor = Colors.red[900]!;
+        statusText = "Low Stock (Critical)";
+        break;
+      case "warning":
+        icon = Icons.warning;
+        iconColor = Colors.yellow[800]!;
+        textColor = Colors.yellow[900]!;
+        statusText = "3 months before expired";
+        break;
+      case "near_expiry":
+        icon = Icons.event_available;
+        iconColor = Colors.orange[800]!;
+        textColor = Colors.orange[900]!;
+        statusText = "Nearly Expired";
+        break;
+      case "expired":
+        icon = Icons.event_busy;
+        iconColor = Colors.red[800]!;
+        textColor = Colors.red[900]!;
+        statusText = "Expired";
+        break;
+      default:
+        return SizedBox(); // Ignore "normal" status
+    }
+
+    return Card(
+      color: Colors.white,
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: ListTile(
+        leading: Icon(icon, color: iconColor, size: 28),
+        title: Text(
+          itemName,
+          style: TextStyle(fontWeight: FontWeight.bold, color: textColor),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              statusText,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Remaining: $quantity | Expiry: ${expiry ?? 'N/A'}',
+              style: TextStyle(fontSize: 13),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -244,14 +293,15 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                SizedBox(height: 50),
+                SizedBox(height: 60),
                 Image.asset('assets/bulacan_logo.png', width: 250, height: 250),
-                SizedBox(height: 20),
+                SizedBox(height: 90),
                 Container(
                   width: double.infinity,
                   margin: EdgeInsets.symmetric(
                     horizontal: 16.0,
                   ), // Set margin on both sides
+
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.push(
