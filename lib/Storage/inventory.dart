@@ -30,10 +30,12 @@ class _InventoryPageState extends State<InventoryPage> {
   Future<void> fetchItems() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
     if (response.statusCode == 200) {
-      setState(() {
-        items = jsonDecode(response.body)['items'];
-        filteredItems = items;
-      });
+      if (mounted) {
+        setState(() {
+          items = jsonDecode(response.body)['items'];
+          filteredItems = items;
+        });
+      }
     }
   }
 
@@ -63,8 +65,6 @@ class _InventoryPageState extends State<InventoryPage> {
           return a['item_name'].compareTo(b['item_name']);
         } else if (criteria == 'quantity') {
           return int.parse(a['quantity']).compareTo(int.parse(b['quantity']));
-        } else if (criteria == 'date_added') {
-          return a['date_added'].compareTo(b['date_added']);
         }
         return 0;
       });
@@ -95,7 +95,17 @@ class _InventoryPageState extends State<InventoryPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Inventory')),
+      appBar: AppBar(
+        //i want to add icon inventory box here beside the title
+        title: Row(
+          children: [
+            Text('📦', style: TextStyle(fontSize: 30)),
+            SizedBox(width: 10),
+            Text('Storage Area'),
+          ],
+        ),
+        centerTitle: true,
+      ),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(

@@ -82,7 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        print("API Response: ${response.body}");
+        //print("API Response: ${response.body}");
 
         // Filter out items where status is "normal"
         List<dynamic> newItems =
@@ -188,7 +188,7 @@ class _HomeScreenState extends State<HomeScreen> {
         statusText = "Low Stock (Critical)";
         break;
       case "warning":
-        icon = Icons.warning;
+        icon = Icons.event;
         iconColor = Colors.yellow[800]!;
         textColor = Colors.yellow[900]!;
         statusText = "3 months before expired";
