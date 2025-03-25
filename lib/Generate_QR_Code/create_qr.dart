@@ -1,3 +1,5 @@
+// ignore_for_file: unused_element, unused_local_variable
+
 import 'dart:convert';
 import 'dart:io';
 
@@ -5,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:screenshot/screenshot.dart';
 
@@ -464,24 +465,24 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
                 ),
               ),
               SizedBox(height: 20),
-              if (qrData.trim().isNotEmpty)
-                Center(
-                  child: Column(
-                    children: [
-                      Screenshot(
-                        controller: screenshotController,
-                        child: QrImageView(data: qrData, size: 200),
-                      ),
-                      SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await saveQR(); // Save the QR Code to Downloads
-                        },
-                        child: Text('Download QR'),
-                      ),
-                    ],
-                  ),
-                ),
+              // if (qrData.trim().isNotEmpty)
+              //   Center(
+              //     child: Column(
+              //       children: [
+              //         Screenshot(
+              //           controller: screenshotController,
+              //           child: QrImageView(data: qrData, size: 200),
+              //         ),
+              //         SizedBox(height: 20),
+              //         ElevatedButton(
+              //           onPressed: () async {
+              //             await saveQR(); // Save the QR Code to Downloads
+              //           },
+              //           child: Text('Download QR'),
+              //         ),
+              //       ],
+              //     ),
+              //   ),
             ],
           ),
         ),
