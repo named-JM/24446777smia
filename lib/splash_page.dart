@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
                 child: FadeTransition(
                   opacity: _fadeAnimation,
                   child: Image.asset(
-                    'assets/Bulacan_Seal.svg.png', // Replace with your logo asset path
+                    'assets/bulacan_logo.png', // Replace with your logo asset path
                     width: 200,
                     height: 200,
                   ),
