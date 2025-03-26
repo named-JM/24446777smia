@@ -61,20 +61,28 @@ class _InventoryPageState extends State<InventoryPage> {
   Future<void> fetchItems() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
     if (response.statusCode == 200) {
-      if (mounted) {
-        setState(() {
-          items = jsonDecode(response.body)['items'];
+      final jsonResponse = jsonDecode(response.body);
 
-          // Ensure 'statuses' is always a list (prevents null errors)
-          for (var item in items) {
-            item['statuses'] ??= [];
-          }
+      if (jsonResponse is Map<String, dynamic> &&
+          jsonResponse.containsKey('items')) {
+        final itemsData = jsonResponse['items'];
 
-          filteredItems = items;
-          selectedCategory = "All Categories"; // ✅ Reset to default
-          isLoading = false; // Set isLoading to false once data is fetched
-        });
+        if (itemsData is List) {
+          setState(() {
+            items = itemsData;
+            filteredItems = items;
+            isLoading = false; // Set loading to false
+          });
+        } else {
+          print("Error: 'items' is not a list.");
+        }
+      } else {
+        print("Error: 'items' key not found in the response.");
       }
+    } else {
+      print(
+        "Error: Failed to fetch items. Status code: ${response.statusCode}",
+      );
     }
   }
 

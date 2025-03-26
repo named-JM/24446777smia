@@ -295,7 +295,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: <Widget>[
                 SizedBox(height: 60),
                 Image.asset('assets/bulacan_logo.png', width: 250, height: 250),
-                SizedBox(height: 90),
+                SizedBox(height: 50),
                 Container(
                   width: double.infinity,
                   margin: EdgeInsets.symmetric(

@@ -24,7 +24,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    syncInventory(); // Sync data on app start
+    // syncInventory(); // Sync data on app start
     checkInternetAndSync();
   }
 
@@ -41,48 +41,48 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> syncInventory() async {
-    final box = await Hive.openBox('inventory');
-    print("Stored Items: ${box.toMap()}");
+  // Future<void> syncInventory() async {
+  //   final box = await Hive.openBox('inventory');
+  //   print("Stored Items: ${box.toMap()}");
 
-    if (box.isNotEmpty) {
-      print("Offline inventory already exists.");
-      return;
-    }
+  //   if (box.isNotEmpty) {
+  //     print("Offline inventory already exists.");
+  //     return;
+  //   }
 
-    final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
+  //   final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
 
-    if (response.statusCode == 200) {
-      Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+  //   if (response.statusCode == 200) {
+  //     Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
-      if (jsonResponse.containsKey('items')) {
-        // Ensure "items" exists
-        List<dynamic> inventoryList = jsonResponse['items'];
+  //     if (jsonResponse.containsKey('items')) {
+  //       // Ensure "items" exists
+  //       List<dynamic> inventoryList = jsonResponse['items'];
 
-        for (var item in inventoryList) {
-          box.put(item['qr_code_data'], {
-            'serial_no': item['serial_no'],
-            'brand': item['brand'],
-            'item_name': item['item_name'],
-            'specification': item['specification'],
-            'unit': item['unit'],
-            'cost': item['cost'],
-            'quantity': int.parse(item['quantity']), // Ensure it's an integer
-            'mfg_date': item['mfg_date'],
-            'exp_date': item['exp_date'],
-            'category': item['category'],
-            'qr_code_image': item['qr_code_image'],
-          });
-        }
+  //       for (var item in inventoryList) {
+  //         box.put(item['qr_code_data'], {
+  //           'serial_no': item['serial_no'],
+  //           'brand': item['brand'],
+  //           'item_name': item['item_name'],
+  //           'specification': item['specification'],
+  //           'unit': item['unit'],
+  //           'cost': item['cost'],
+  //           'quantity': int.parse(item['quantity']), // Ensure it's an integer
+  //           'mfg_date': item['mfg_date'],
+  //           'exp_date': item['exp_date'],
+  //           'category': item['category'],
+  //           'qr_code_image': item['qr_code_image'],
+  //         });
+  //       }
 
-        print("Inventory synced successfully!");
-      } else {
-        print("Error: 'items' key not found in API response.");
-      }
-    } else {
-      print("Failed to fetch inventory from server.");
-    }
-  }
+  //       print("Inventory synced successfully!");
+  //     } else {
+  //       print("Error: 'items' key not found in API response.");
+  //     }
+  //   } else {
+  //     print("Failed to fetch inventory from server.");
+  //   }
+  // }
 
   Future<void> syncOfflineUpdates() async {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
@@ -203,82 +203,24 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text('Login'),
-        automaticallyImplyLeading: false,
-      ),
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      appBar: AppBar(title: const Text('Login')),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
           children: <Widget>[
             TextField(
               controller: emailController,
-              decoration: InputDecoration(
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.lightGreen),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.lightGreen),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                labelText: 'Email',
-                labelStyle: TextStyle(color: Colors.black),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
+              decoration: InputDecoration(labelText: 'Email'),
             ),
-            SizedBox(height: 20),
             TextField(
               controller: passwordController,
-              decoration: InputDecoration(
-                enabledBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.lightGreen),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.lightGreen),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                labelText: 'Password',
-                labelStyle: TextStyle(color: Colors.black),
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                  borderSide: BorderSide.none,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-              ),
+              decoration: InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
             SizedBox(height: 20),
-            Container(
-              width: double.infinity,
-              margin: EdgeInsets.symmetric(
-                horizontal: 16.0,
-              ), // Set margin on both sides
-              child: ElevatedButton(
-                onPressed: () => loginUser(context),
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.lightGreen,
-                  padding: EdgeInsets.symmetric(vertical: 16.0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  textStyle: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                child: const Text('Login'),
-              ),
+            ElevatedButton(
+              onPressed: () => loginUser(context),
+              child: const Text('Login'),
             ),
             TextButton(
               onPressed: () {

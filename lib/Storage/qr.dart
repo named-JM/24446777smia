@@ -36,7 +36,7 @@ class _QRScannerPageState extends State<QRScannerPage> {
             onPressed: () {
               Navigator.pop(
                 context,
-                '111,no brand,pampaligaya,paksk,24,48,111,02/2025,02/2026,Vitamins',
+                'ND2828282,no brnd,Paracentamol,gampt aa sakit,500mg,10,250,03/2025,09/2025,Antibiotic',
               );
             },
             child: Text('Simulate QR Scan'),

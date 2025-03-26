@@ -49,6 +49,9 @@ dependencies:
   build_runner: ^2.4.14
   shared_preferences: ^2.0.6
   permission_handler: ^11.4.0
+  device_preview: ^1.1.0
+  csv: ^5.0.2
+  open_file: ^3.5.10
   
   
 dev_dependencies:

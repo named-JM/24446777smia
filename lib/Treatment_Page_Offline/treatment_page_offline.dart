@@ -15,8 +15,6 @@ class TreatmentPageOffline extends StatefulWidget {
 
 class _TreatmentPageOfflineState extends State<TreatmentPageOffline> {
   List<Map<String, dynamic>> items = [];
-  final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey =
-      GlobalKey<RefreshIndicatorState>();
 
   @override
   void initState() {
@@ -41,18 +39,14 @@ class _TreatmentPageOfflineState extends State<TreatmentPageOffline> {
         final List<dynamic> onlineItems = jsonDecode(response.body)['items'];
 
         final box = await Hive.openBox('inventory');
-        await box.clear(); // Always clear old data before inserting new data
+        await box.clear(); // Clear old data before inserting new data
 
         for (var item in onlineItems) {
-          await box.put(item['qr_code_data'], {
-            // Store using qr_code_data as key
-            'item_name': item['item_name'],
-            'quantity': item['quantity'],
-          });
+          await box.add(item);
         }
 
         print("Sync successful: MySQL data updated in Hive!");
-        fetchMedicines(); // Refresh inventory after sync
+        fetchMedicines(); // Refresh UI with updated data
       } else {
         print("Failed to fetch online data: ${response.statusCode}");
       }
@@ -100,8 +94,6 @@ class _TreatmentPageOfflineState extends State<TreatmentPageOffline> {
           IconButton(
             icon: Icon(Icons.refresh), // Reload button
             onPressed: () {
-              _refreshIndicatorKey.currentState
-                  ?.show(); // Trigger refresh indicator
               syncOnlineToOffline(); // Sync MySQL data to Hive
             },
           ),
@@ -115,7 +107,6 @@ class _TreatmentPageOfflineState extends State<TreatmentPageOffline> {
           ),
           Expanded(
             child: RefreshIndicator(
-              key: _refreshIndicatorKey,
               onRefresh: fetchMedicines,
               child: ListView.builder(
                 itemCount: items.length,

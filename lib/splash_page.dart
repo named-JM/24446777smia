@@ -11,7 +11,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _spreadAnimation;
   late Animation<double> _fadeAnimation;
-  bool _showGif = false;
+  // bool _showGif = false;
 
   @override
   void initState() {
@@ -34,9 +34,9 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     Future.delayed(const Duration(milliseconds: 2500), () {
-      setState(() {
-        _showGif = true;
-      });
+      // setState(() {
+      //   _showGif = true;
+      // });
 
       Future.delayed(const Duration(seconds: 4), () {
         Navigator.pushReplacement(
