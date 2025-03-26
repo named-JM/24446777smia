@@ -1,10 +1,9 @@
 import 'dart:convert';
 
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
-import 'package:qrqragain/Treatment_Area/qr.dart';
-import 'package:qrqragain/Treatment_Area/remove_item.dart';
 import 'package:qrqragain/constants.dart';
 
 class TreatmentPage extends StatefulWidget {
@@ -14,12 +13,27 @@ class TreatmentPage extends StatefulWidget {
 
 class _TreatmentPageState extends State<TreatmentPage> {
   List<dynamic> items = [];
+  String selectedCategory = 'All'; // Default category
+  List<String> categories = ['All']; // List of categories
+  bool isLoading = true; // Add a loading state
 
   @override
   void initState() {
     super.initState();
-    checkInternetAndSync(); // Ensure sync runs when app starts
-    fetchMedicines();
+    loadData(); // Load data when the page initializes
+  }
+
+  Future<void> loadData() async {
+    setState(() {
+      isLoading = true; // Show loading indicator
+    });
+
+    await checkInternetAndSync();
+    await fetchMedicines();
+
+    setState(() {
+      isLoading = false; // Hide loading indicator
+    });
   }
 
   Future<void> checkInternetAndSync() async {
@@ -28,7 +42,7 @@ class _TreatmentPageState extends State<TreatmentPage> {
         Uri.parse("$BASE_URL/check_connection.php"),
       );
       if (response.statusCode == 200) {
-        await syncPendingUpdates(); // Sync offline changes when online
+        await syncPendingUpdates();
       }
     } catch (e) {
       print("No internet connection");
@@ -53,7 +67,7 @@ class _TreatmentPageState extends State<TreatmentPage> {
 
         if (response.statusCode == 200) {
           print("Offline updates synced successfully!");
-          await pendingUpdatesBox.clear(); // Clear only on success
+          await pendingUpdatesBox.clear();
         } else {
           print(
             "Failed to sync offline updates. Server Response: ${response.body}",
@@ -72,6 +86,12 @@ class _TreatmentPageState extends State<TreatmentPage> {
       if (response.statusCode == 200) {
         setState(() {
           items = jsonDecode(response.body)['items'];
+
+          // Extract unique categories
+          categories = ['All'];
+          categories.addAll(
+            items.map((item) => item['category'].toString()).toSet().toList(),
+          );
         });
       } else {
         print("Failed to load items. Status Code: ${response.statusCode}");
@@ -81,47 +101,151 @@ class _TreatmentPageState extends State<TreatmentPage> {
     }
   }
 
-  void openQRScanner() async {
-    String? scannedQR = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => QRScannerPage()),
-    );
-
-    if (scannedQR != null) {
-      bool? updated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => RemoveQuantityPage(qrCodeData: scannedQR),
-        ),
-      );
-
-      if (updated == true) {
-        fetchMedicines(); // Refresh inventory if an item was updated
-      }
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Show loading indicator if data is still loading
+    if (isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Treatment Area')),
+        body: const Center(
+          child: CircularProgressIndicator(), // Loading spinner
+        ),
+      );
+    }
+
+    // Filter items based on the selected category
+    final filteredItems =
+        selectedCategory == 'All'
+            ? items
+            : items
+                .where((item) => item['category'] == selectedCategory)
+                .toList();
+
+    // Limit the number of items displayed in the bar chart
+    final limitedItems = filteredItems.take(10).toList();
+
     return Scaffold(
       appBar: AppBar(title: const Text('Treatment Area')),
       body: Column(
         children: [
-          ElevatedButton(
-            onPressed: openQRScanner,
-            child: const Text('Scan QR'),
+          // Dropdown for category filter
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: DropdownButton<String>(
+              value: selectedCategory,
+              onChanged: (String? newValue) {
+                setState(() {
+                  selectedCategory = newValue!;
+                });
+              },
+              isExpanded: true,
+              items:
+                  categories.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+            ),
           ),
+          const SizedBox(height: 20),
+
+          if (limitedItems.isNotEmpty)
+            SizedBox(
+              height: 200,
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: BarChart(
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    barGroups:
+                        limitedItems.map((medicine) {
+                          return BarChartGroupData(
+                            x: limitedItems.indexOf(medicine),
+                            barRods: [
+                              BarChartRodData(
+                                toY: double.parse(
+                                  medicine['quantity'].toString(),
+                                ),
+                                color: Colors.blue,
+                                width: 16,
+                              ),
+                            ],
+                          );
+                        }).toList(),
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (double value, TitleMeta meta) {
+                            final itemName =
+                                limitedItems[value.toInt()]['item_name'];
+                            return RotatedBox(
+                              quarterTurns: 1,
+                              child: Text(
+                                itemName.length > 10
+                                    ? '${itemName.substring(0, 10)}...'
+                                    : itemName,
+                                style: const TextStyle(fontSize: 10),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      topTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: false, // Disable top titles
+                        ),
+                      ),
+                    ),
+                    barTouchData: BarTouchData(
+                      touchTooltipData: BarTouchTooltipData(
+                        tooltipBgColor: Colors.grey,
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final medicine = limitedItems[group.x.toInt()];
+                          return BarTooltipItem(
+                            medicine['item_name'], // Show the item name
+                            const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: fetchMedicines,
               child: ListView.builder(
-                itemCount: items.length,
+                itemCount: filteredItems.length,
                 itemBuilder: (context, index) {
-                  final medicine = items[index];
+                  final medicine = filteredItems[index];
                   return Card(
                     child: ListTile(
-                      title: Text(medicine['item_name']),
-                      subtitle: Text('Quantity: ${medicine['quantity']}'),
+                      title: Text(
+                        medicine['item_name'],
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text('Remaining: ${medicine['quantity']}'),
+                            ],
+                          ),
+                          Text('Category: ${medicine['category']}'),
+                        ],
+                      ),
                     ),
                   );
                 },

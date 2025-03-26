@@ -1,7 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
 
+//heres the add
+
 class QRScannerPage extends StatefulWidget {
+  final String action; // 'scan'
+
+  QRScannerPage({required this.action});
+
   @override
   _QRScannerPageState createState() => _QRScannerPageState();
 }
@@ -20,11 +26,10 @@ class _QRScannerPageState extends State<QRScannerPage> {
     this.controller = controller;
     controller.scannedDataStream.listen((scanData) {
       controller.pauseCamera();
-      Navigator.pop(context, scanData.code);
+      Navigator.pop(context, scanData.code); // Return scanned QR data
     });
   }
 
-  // Add a button for manual testing
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -39,13 +44,13 @@ class _QRScannerPageState extends State<QRScannerPage> {
                 'ND2828282,no brnd,Paracentamol,gampt aa sakit,500mg,10,250,03/2025,09/2025,Antibiotic',
               );
             },
-            child: Text('Simulate QR Scan'),
+            child: Text('Simulate QR Scan / Paracetamol Data'),
           ),
         ],
       ),
     );
   }
-
+}
   // void onQRViewCreated(QRViewController controller) {
   //   this.controller = controller;
   //   controller.scannedDataStream.listen((scanData) {
@@ -61,4 +66,4 @@ class _QRScannerPageState extends State<QRScannerPage> {
   //     body: QRView(key: qrKey, onQRViewCreated: onQRViewCreated),
   //   );
   // }
-}
+// }

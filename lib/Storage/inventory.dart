@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qrqragain/Storage/qr.dart';
 import 'package:qrqragain/Storage/update.dart';
+import 'package:qrqragain/Treatment_Area/remove_item.dart';
 import 'package:qrqragain/constants.dart';
 
 class InventoryPage extends StatefulWidget {
@@ -116,22 +117,54 @@ class _InventoryPageState extends State<InventoryPage> {
   }
 
   void openQRScanner() async {
+    // Scan the QR code first
     String? scannedQR = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => QRScannerPage()),
+      MaterialPageRoute(builder: (context) => QRScannerPage(action: 'scan')),
     );
 
     if (scannedQR != null) {
-      bool? updated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => UpdateItemPage(qrCodeData: scannedQR),
-        ),
+      // Show a dialog to choose between Add or Remove
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Action'),
+            content: const Text('Do you want to add or remove items?'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Navigate to UpdateItemPage for adding items
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => UpdateItemPage(qrCodeData: scannedQR),
+                    ),
+                  );
+                },
+                child: const Text('Add Items'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Navigate to RemoveQuantityPage for removing items
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              RemoveQuantityPage(qrCodeData: scannedQR),
+                    ),
+                  );
+                },
+                child: const Text('Remove Items'),
+              ),
+            ],
+          );
+        },
       );
-
-      if (updated == true) {
-        fetchItems();
-      }
     }
   }
 
@@ -220,12 +253,14 @@ class _InventoryPageState extends State<InventoryPage> {
       // backgroundColor: const Color.fromARGB(255, 242, 241, 241),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: Row(
-          children: [
-            Text('📦', style: TextStyle(fontSize: 30)),
-            SizedBox(width: 10),
-            Text('Storage Area'),
-          ],
+        title: Center(
+          child: Row(
+            children: [
+              Icon(Icons.inventory),
+              SizedBox(width: 10),
+              Text('Storage Area'),
+            ],
+          ),
         ),
         centerTitle: true,
       ),
@@ -298,9 +333,8 @@ class _InventoryPageState extends State<InventoryPage> {
                               ),
                             ),
                           ),
-                          SizedBox(
-                            width: 10,
-                          ), // ✅ Space between dropdown & buttons
+                          SizedBox(width: 10),
+
                           // QR Scanner Icon Button
                           IconButton(
                             onPressed: openQRScanner,

@@ -203,46 +203,112 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Login')),
-      body: Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            TextField(
-              controller: emailController,
-              decoration: InputDecoration(labelText: 'Email'),
-            ),
-            TextField(
-              controller: passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => loginUser(context),
-              child: const Text('Login'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => Registration()),
-                );
-              },
-              child: const Text('No Account? Register Here'),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => TreatmentPageOffline(),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        title: const Text('Login'),
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+      ),
+      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      body: Center(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize:
+                MainAxisSize
+                    .min, // Ensures the column takes only the necessary space
+            mainAxisAlignment:
+                MainAxisAlignment.center, // Centers items vertically
+            crossAxisAlignment:
+                CrossAxisAlignment.center, // Centers items horizontally
+            children: <Widget>[
+              TextField(
+                controller: emailController,
+                decoration: InputDecoration(
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.lightGreen),
+                    borderRadius: BorderRadius.circular(18),
                   ),
-                );
-              },
-              child: const Text('Offline Mode '),
-            ),
-          ],
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.lightGreen),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  labelText: 'Email',
+                  labelStyle: TextStyle(color: Colors.black),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              TextField(
+                controller: passwordController,
+                decoration: InputDecoration(
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.lightGreen),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.lightGreen),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  labelText: 'Password',
+                  labelStyle: TextStyle(color: Colors.black),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                ),
+                obscureText: true,
+              ),
+              SizedBox(height: 20),
+              Container(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => loginUser(context),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.lightGreen,
+                    padding: EdgeInsets.symmetric(vertical: 16.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    textStyle: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Login'),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => Registration()),
+                  );
+                },
+                child: const Text('No Account? Register Here'),
+              ),
+              Text("Offline currently working...."),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TreatmentPageOffline(),
+                    ),
+                  );
+                },
+                child: const Text('Offline Mode '),
+              ),
+            ],
+          ),
         ),
       ),
     );
