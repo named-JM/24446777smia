@@ -4,6 +4,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Page_Offline/treatment_page_offline.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/home.dart';
@@ -29,16 +30,55 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> checkInternetAndSync() async {
-    try {
-      final response = await http.get(
-        Uri.parse("$BASE_URL/check_connection.php"),
-      );
-      if (response.statusCode == 200) {
-        syncOfflineUpdates(); // Sync if online
+    var connectivityResult = await Connectivity().checkConnectivity();
+
+    if (connectivityResult == ConnectivityResult.none) {
+      if (mounted) {
+        showNoInternetDialog();
       }
-    } catch (e) {
-      print("No internet connection");
+    } else {
+      try {
+        final response = await http.get(
+          Uri.parse("$BASE_URL/check_connection.php"),
+        );
+        if (response.statusCode == 200) {
+          syncOfflineUpdates();
+        }
+      } catch (e) {
+        print("No internet connection");
+      }
     }
+  }
+
+  void showNoInternetDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("No Internet Connection"),
+          content: Text(
+            "You're offline. Would you like to switch to offline mode?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context), // Dismiss the dialog
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => OfflineHomePage()),
+                );
+              },
+              child: Text("Go Offline"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   // Future<void> syncInventory() async {
@@ -300,12 +340,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => TreatmentPageOffline(),
-                    ),
+                    MaterialPageRoute(builder: (context) => OfflineHomePage()),
                   );
                 },
-                child: const Text('Offline Mode '),
+                child: const Text('Offline Mode'),
               ),
             ],
           ),
