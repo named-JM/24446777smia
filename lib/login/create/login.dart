@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Page_Offline/treatment_page_offline.dart';
 import 'package:qrqragain/constants.dart';
+import 'package:qrqragain/hive_display.dart';
 import 'package:qrqragain/home.dart';
 import 'package:qrqragain/login/create/register.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -81,48 +82,48 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // Future<void> syncInventory() async {
-  //   final box = await Hive.openBox('inventory');
-  //   print("Stored Items: ${box.toMap()}");
+  Future<void> syncInventory() async {
+    final box = await Hive.openBox('inventory');
+    print("Stored Items: ${box.toMap()}");
 
-  //   if (box.isNotEmpty) {
-  //     print("Offline inventory already exists.");
-  //     return;
-  //   }
+    if (box.isNotEmpty) {
+      print("Offline inventory already exists.");
+      return;
+    }
 
-  //   final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
+    final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
 
-  //   if (response.statusCode == 200) {
-  //     Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+    if (response.statusCode == 200) {
+      Map<String, dynamic> jsonResponse = jsonDecode(response.body);
 
-  //     if (jsonResponse.containsKey('items')) {
-  //       // Ensure "items" exists
-  //       List<dynamic> inventoryList = jsonResponse['items'];
+      if (jsonResponse.containsKey('items')) {
+        // Ensure "items" exists
+        List<dynamic> inventoryList = jsonResponse['items'];
 
-  //       for (var item in inventoryList) {
-  //         box.put(item['qr_code_data'], {
-  //           'serial_no': item['serial_no'],
-  //           'brand': item['brand'],
-  //           'item_name': item['item_name'],
-  //           'specification': item['specification'],
-  //           'unit': item['unit'],
-  //           'cost': item['cost'],
-  //           'quantity': int.parse(item['quantity']), // Ensure it's an integer
-  //           'mfg_date': item['mfg_date'],
-  //           'exp_date': item['exp_date'],
-  //           'category': item['category'],
-  //           'qr_code_image': item['qr_code_image'],
-  //         });
-  //       }
+        for (var item in inventoryList) {
+          box.put(item['qr_code_data'], {
+            'serial_no': item['serial_no'],
+            'brand': item['brand'],
+            'item_name': item['item_name'],
+            'specification': item['specification'],
+            'unit': item['unit'],
+            'cost': item['cost'],
+            'quantity': int.parse(item['quantity']), // Ensure it's an integer
+            'mfg_date': item['mfg_date'],
+            'exp_date': item['exp_date'],
+            'category': item['category'],
+            'qr_code_image': item['qr_code_image'],
+          });
+        }
 
-  //       print("Inventory synced successfully!");
-  //     } else {
-  //       print("Error: 'items' key not found in API response.");
-  //     }
-  //   } else {
-  //     print("Failed to fetch inventory from server.");
-  //   }
-  // }
+        print("Inventory synced successfully!");
+      } else {
+        print("Error: 'items' key not found in API response.");
+      }
+    } else {
+      print("Failed to fetch inventory from server.");
+    }
+  }
 
   Future<void> syncOfflineUpdates() async {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
@@ -340,10 +341,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 onPressed: () {
                   Navigator.pushReplacement(
                     context,
-                    MaterialPageRoute(builder: (context) => OfflineHomePage()),
+                    MaterialPageRoute(
+                      builder: (context) => TreatmentPageOffline(),
+                    ),
                   );
                 },
                 child: const Text('Offline Mode'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HiveDisplay()),
+                  );
+                },
+                child: const Text('Offline Home Page'),
               ),
             ],
           ),

@@ -16,12 +16,20 @@ Future<void> syncInventory() async {
     await box.clear(); // Ensure the offline storage is fully updated
 
     for (var item in inventoryList) {
-      box.put(item['qr_code_data'], {
-        'item_name': item['item_name'],
-        'quantity':
-            int.tryParse(item['quantity'].toString()) ??
-            0, // Ensure it's stored as an int
-      });
+      // Debugging: Print the item and its qr_code_data
+      print('Processing item: $item');
+      final qrCodeData = item['qr_code_data'];
+
+      if (qrCodeData != null && qrCodeData is String) {
+        box.put(qrCodeData, {
+          'item_name': item['item_name'],
+          'quantity':
+              int.tryParse(item['quantity'].toString()) ??
+              0, // Ensure it's stored as an int
+        });
+      } else {
+        print('Invalid qr_code_data: $qrCodeData');
+      }
     }
 
     print("Inventory synced successfully!");
@@ -42,6 +50,17 @@ class RemoveQuantityPageOffline extends StatefulWidget {
 
 class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
   final TextEditingController quantityController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    syncInventory(); // Sync inventory when the page initializes
+  }
+
+  void printHiveData() async {
+    final box = await Hive.openBox('inventory');
+    print("Hive Inventory Data: ${box.toMap()}");
+  }
 
   Future<void> removeQuantity() async {
     final inventoryBox = await Hive.openBox('inventory');
