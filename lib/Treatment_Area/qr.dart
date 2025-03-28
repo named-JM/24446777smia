@@ -3,6 +3,10 @@ import 'package:qr_code_scanner/qr_code_scanner.dart';
 
 //heres the remove
 class QRScannerPage extends StatefulWidget {
+  final String action; // 'scan'
+
+  QRScannerPage({required this.action});
+
   @override
   _QRScannerPageState createState() => _QRScannerPageState();
 }

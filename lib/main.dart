@@ -65,6 +65,7 @@ class _MyAppState extends State<MyApp> {
     return MaterialApp(home: isOnline ? SplashScreen() : OfflineHomePage());
   }
 }
+
 // import 'dart:convert';
 
 // import 'package:connectivity_plus/connectivity_plus.dart';

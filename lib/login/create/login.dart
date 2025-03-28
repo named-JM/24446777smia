@@ -5,9 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/Offline_Page.dart';
-import 'package:qrqragain/Treatment_Page_Offline/treatment_page_offline.dart';
+import 'package:qrqragain/Treatment_Page_Offline/offline_inventory_scanning.dart';
 import 'package:qrqragain/constants.dart';
-import 'package:qrqragain/hive_display.dart';
 import 'package:qrqragain/home.dart';
 import 'package:qrqragain/login/create/register.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -226,7 +225,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => TreatmentPageOffline()),
+        MaterialPageRoute(builder: (context) => OfflineScanningPage()),
       );
     } else {
       showErrorMessage("Invalid credentials for offline login.");
@@ -337,26 +336,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('No Account? Register Here'),
               ),
               Text("Offline currently working...."),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TreatmentPageOffline(),
-                    ),
-                  );
-                },
-                child: const Text('Offline Mode'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => HiveDisplay()),
-                  );
-                },
-                child: const Text('Offline Home Page'),
-              ),
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.pushReplacement(
+              //       context,
+              //       MaterialPageRoute(builder: (context) => OfflineHomePage()),
+              //     );
+              //   },
+              //   child: const Text('Offline Mode'),
+              // ),
+              //this will go through to display the hive data
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.pushReplacement(
+              //       context,
+              //       MaterialPageRoute(builder: (context) => HiveDisplay()),
+              //     );
+              //   },
+              //   child: const Text('Offline Home Page'),
+              // ),
             ],
           ),
         ),

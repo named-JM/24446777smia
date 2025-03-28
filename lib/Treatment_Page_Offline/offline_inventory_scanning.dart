@@ -3,17 +3,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Area/qr.dart';
 import 'package:qrqragain/Treatment_Page_Offline/remove_item_offline.dart';
+import 'package:qrqragain/Treatment_Page_Offline/update_item_offline.dart';
 import 'package:qrqragain/constants.dart';
-import 'package:qrqragain/login/create/login.dart';
 
-class TreatmentPageOffline extends StatefulWidget {
+class OfflineScanningPage extends StatefulWidget {
   @override
-  _TreatmentPageOfflineState createState() => _TreatmentPageOfflineState();
+  _OfflineScanningPageState createState() => _OfflineScanningPageState();
 }
 
-class _TreatmentPageOfflineState extends State<TreatmentPageOffline> {
+class _OfflineScanningPageState extends State<OfflineScanningPage> {
   List<Map<String, dynamic>> items = [];
 
   @override
@@ -56,37 +57,90 @@ class _TreatmentPageOfflineState extends State<TreatmentPageOffline> {
   }
 
   void openQRScanner() async {
+    // Scan the QR code first
     String? scannedQR = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => QRScannerPage()),
+      MaterialPageRoute(builder: (context) => QRScannerPage(action: 'scan')),
     );
 
     if (scannedQR != null) {
-      bool? updated = await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder:
-              (context) => RemoveQuantityPageOffline(qrCodeData: scannedQR),
-        ),
+      // Show a dialog to choose between Add or Remove
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: const Text('Select Action'),
+            content: const Text('Do you want to add or remove items?'),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Navigate to UpdateItemPage for adding items
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => UpdateItemOffline(qrCodeData: scannedQR),
+                    ),
+                  );
+                },
+                child: const Text('Add Items'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Navigate to RemoveQuantityPage for removing items
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) =>
+                              RemoveQuantityPageOffline(qrCodeData: scannedQR),
+                    ),
+                  );
+                },
+                child: const Text('Remove Items'),
+              ),
+            ],
+          );
+        },
       );
-
-      if (updated == true) {
-        fetchMedicines(); // Refresh inventory if an item was updated
-      }
     }
   }
+
+  // void openQRScanner() async {
+  //   String? scannedQR = await Navigator.push(
+  //     context,
+  //     MaterialPageRoute(builder: (context) => QRScannerPage()),
+  //   );
+
+  //   if (scannedQR != null) {
+  //     bool? updated = await Navigator.push(
+  //       context,
+  //       MaterialPageRoute(
+  //         builder:
+  //             (context) => RemoveQuantityPageOffline(qrCodeData: scannedQR),
+  //       ),
+  //     );
+
+  //     if (updated == true) {
+  //       fetchMedicines(); // Refresh inventory if an item was updated
+  //     }
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Treatment Area (Offline)'),
+        title: const Text('Inventory Scanning (Offline)'),
+        backgroundColor: Colors.lightGreen, // Green app bar color
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => LoginScreen()),
+              MaterialPageRoute(builder: (context) => OfflineHomePage()),
             );
           },
         ),

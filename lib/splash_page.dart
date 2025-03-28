@@ -34,16 +34,16 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.forward();
 
     Future.delayed(const Duration(milliseconds: 2500), () {
-      // setState(() {
-      //   _showGif = true;
-      // });
-
-      Future.delayed(const Duration(seconds: 4), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => LoginScreen()),
-        );
-      });
+      if (mounted) {
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+            );
+          }
+        });
+      }
     });
   }
 
