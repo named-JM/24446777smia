@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qrqragain/Storage/qr.dart';
@@ -33,6 +34,76 @@ class _InventoryPageState extends State<InventoryPage> {
     super.initState();
     fetchItems();
     fetchCategories();
+    syncPendingUpdates(); // Sync pending offline updates when online
+    syncOfflineUpdates();
+  }
+
+  Future<void> syncOfflineUpdates() async {
+    final pendingUpdatesBox = await Hive.openBox('pending_updates');
+
+    if (pendingUpdatesBox.isNotEmpty) {
+      List<Map<String, dynamic>> updates = [];
+
+      for (var item in pendingUpdatesBox.values) {
+        updates.add({
+          'qr_code_data': item['qr_code_data'],
+          'quantity_removed': item['quantity_removed'],
+        });
+      }
+
+      final response = await http.post(
+        Uri.parse('$BASE_URL/sync_updates.php'),
+        body: jsonEncode({'updates': updates}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success']) {
+          // Clear synced updates
+          await pendingUpdatesBox.clear();
+          print("Offline updates synced successfully!");
+        } else {
+          print("Sync failed: ${result['message']}");
+        }
+      } else {
+        print("Failed to sync offline updates.");
+      }
+    }
+  }
+
+  Future<void> syncPendingUpdates() async {
+    final pendingUpdatesBox = await Hive.openBox('pending_updates');
+
+    if (pendingUpdatesBox.isNotEmpty) {
+      List<Map<String, dynamic>> pendingUpdates = [];
+
+      for (var update in pendingUpdatesBox.values) {
+        pendingUpdates.add({
+          'qr_code_data': update['qr_code_data'],
+          'quantity_removed': update['quantity_removed'],
+        });
+      }
+
+      try {
+        final response = await http.post(
+          Uri.parse("$BASE_URL/sync_offline_updates.php"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({'updates': pendingUpdates}),
+        );
+
+        if (response.statusCode == 200) {
+          print("Pending updates synced successfully!");
+          await pendingUpdatesBox.clear(); // Clear after successful sync
+        } else {
+          print("Error syncing updates: ${response.body}");
+        }
+      } catch (e) {
+        print("Network error while syncing: $e");
+      }
+    } else {
+      print("No pending updates to sync.");
+    }
   }
 
   Future<void> fetchCategories() async {

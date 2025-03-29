@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Page_Offline/offline_inventory_scanning.dart';
 import 'package:qrqragain/constants.dart';
+import 'package:qrqragain/hive_display.dart';
 import 'package:qrqragain/home.dart';
 import 'package:qrqragain/login/create/register.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -124,6 +125,9 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  /// Sync offline updates to the server
+  /// This function retrieves pending updates from the Hive database and sends them to the server.
+  /// It also clears the pending updates after a successful sync.
   Future<void> syncOfflineUpdates() async {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
 
@@ -336,25 +340,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('No Account? Register Here'),
               ),
               Text("Offline currently working...."),
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.pushReplacement(
-              //       context,
-              //       MaterialPageRoute(builder: (context) => OfflineHomePage()),
-              //     );
-              //   },
-              //   child: const Text('Offline Mode'),
-              // ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OfflineScanningPage(),
+                    ),
+                  );
+                },
+                child: const Text('Offline Mode'),
+              ),
               //this will go through to display the hive data
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.pushReplacement(
-              //       context,
-              //       MaterialPageRoute(builder: (context) => HiveDisplay()),
-              //     );
-              //   },
-              //   child: const Text('Offline Home Page'),
-              // ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => HiveDisplay()),
+                  );
+                },
+                child: const Text('Offline Home Page'),
+              ),
             ],
           ),
         ),

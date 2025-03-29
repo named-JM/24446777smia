@@ -28,7 +28,7 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
 
   Future<void> updateItem() async {
     final response = await http.post(
-      Uri.parse('$BASE_URL/update_item1sample.php'),
+      Uri.parse('$BASE_URL/update_item.php'),
       body: jsonEncode({
         'qr_code_data': widget.qrCodeData,
         'quantity': int.parse(quantityController.text),

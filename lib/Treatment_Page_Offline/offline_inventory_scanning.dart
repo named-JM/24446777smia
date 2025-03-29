@@ -3,11 +3,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
-import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Area/qr.dart';
 import 'package:qrqragain/Treatment_Page_Offline/remove_item_offline.dart';
 import 'package:qrqragain/Treatment_Page_Offline/update_item_offline.dart';
 import 'package:qrqragain/constants.dart';
+import 'package:qrqragain/login/create/login.dart';
 
 class OfflineScanningPage extends StatefulWidget {
   @override
@@ -140,7 +140,7 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
           onPressed: () {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => OfflineHomePage()),
+              MaterialPageRoute(builder: (context) => LoginScreen()),
             );
           },
         ),

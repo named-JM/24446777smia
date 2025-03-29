@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qrqragain/Treatment_Page_Offline/offline_inventory_scanning.dart';
+import 'package:qrqragain/login/create/login.dart';
 
 class OfflineHomePage extends StatefulWidget {
   const OfflineHomePage({super.key});
@@ -16,6 +17,15 @@ class _OfflineHomePageState extends State<OfflineHomePage> {
         title: const Text('You are on Offline Mode'),
         backgroundColor: Colors.lightGreen, // Green app bar color
         centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => LoginScreen()),
+            ); // Go back to the previous page
+          },
+        ),
       ),
 
       body: Center(

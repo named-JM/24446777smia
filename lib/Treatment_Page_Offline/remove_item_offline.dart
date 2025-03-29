@@ -1,42 +1,38 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:http/http.dart' as http;
-import 'package:qrqragain/constants.dart';
 
-Future<void> syncInventory() async {
-  final box = await Hive.openBox('inventory');
+// Future<void> syncInventory() async {
+//   final box = await Hive.openBox('inventory');
 
-  final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
+//   final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
 
-  if (response.statusCode == 200) {
-    List<dynamic> inventoryList = jsonDecode(response.body)['items'];
+//   if (response.statusCode == 200) {
+//     List<dynamic> inventoryList = jsonDecode(response.body)['items'];
 
-    await box.clear(); // Ensure the offline storage is fully updated
+//     await box.clear(); // Ensure the offline storage is fully updated
 
-    for (var item in inventoryList) {
-      // Debugging: Print the item and its qr_code_data
-      print('Processing item: $item');
-      final qrCodeData = item['qr_code_data'];
+//     for (var item in inventoryList) {
+//       // Debugging: Print the item and its qr_code_data
+//       print('Processing item: $item');
+//       final qrCodeData = item['qr_code_data'];
 
-      if (qrCodeData != null && qrCodeData is String) {
-        box.put(qrCodeData, {
-          'item_name': item['item_name'],
-          'quantity':
-              int.tryParse(item['quantity'].toString()) ??
-              0, // Ensure it's stored as an int
-        });
-      } else {
-        print('Invalid qr_code_data: $qrCodeData');
-      }
-    }
+//       if (qrCodeData != null && qrCodeData is String) {
+//         box.put(qrCodeData, {
+//           'item_name': item['item_name'],
+//           'quantity':
+//               int.tryParse(item['quantity'].toString()) ??
+//               0, // Ensure it's stored as an int
+//         });
+//       } else {
+//         print('Invalid qr_code_data: $qrCodeData');
+//       }
+//     }
 
-    print("Inventory synced successfully!");
-  } else {
-    print("Failed to fetch inventory from server.");
-  }
-}
+//     print("Inventory synced successfully!");
+//   } else {
+//     print("Failed to fetch inventory from server.");
+//   }
+// }
 
 class RemoveQuantityPageOffline extends StatefulWidget {
   final String qrCodeData;
@@ -54,7 +50,7 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
   @override
   void initState() {
     super.initState();
-    syncInventory(); // Sync inventory when the page initializes
+    // syncInventory(); // Sync inventory when the page initializes
   }
 
   void printHiveData() async {
