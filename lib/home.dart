@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
 import 'package:qrqragain/Storage/inventory.dart';
@@ -47,6 +48,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    syncOfflineUpdates();
+    checkLowStock(); // Initial check for low stock
 
     // Ensure first API call after UI build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -60,6 +63,60 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _timer?.cancel(); // Stop timer when the widget is disposed
     super.dispose();
+  }
+
+  Future<void> syncOfflineUpdates() async {
+    final pendingUpdatesBox = await Hive.openBox('pending_updates');
+    final inventoryBox = await Hive.openBox('inventory');
+
+    if (pendingUpdatesBox.isNotEmpty) {
+      List<Map<String, dynamic>> updates = [];
+
+      for (var item in pendingUpdatesBox.values) {
+        updates.add({
+          'qr_code_data': item['qr_code_data'],
+          'quantity_removed': item['quantity_removed'] ?? 0,
+          'quantity_added': item['quantity_added'] ?? 0,
+        });
+      }
+
+      final response = await http.post(
+        Uri.parse('$BASE_URL/sync_updates.php'),
+        body: jsonEncode({'updates': updates}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['success']) {
+          for (var update in updates) {
+            int index = inventoryBox.values.toList().indexWhere(
+              (item) => item['qr_code_data'] == update['qr_code_data'],
+            );
+
+            if (index != -1) {
+              var item = inventoryBox.getAt(index);
+              item['quantity'] =
+                  (item['quantity'] ?? 0) -
+                  (update['quantity_removed'] ?? 0) +
+                  (update['quantity_added'] ?? 0);
+              inventoryBox.putAt(index, item);
+            }
+          }
+
+          await pendingUpdatesBox.clear();
+
+          // **Force UI Refresh**
+          setState(() {});
+
+          print("Offline updates synced successfully!");
+        } else {
+          print("Sync failed: ${result['message']}");
+        }
+      } else {
+        print("Failed to sync offline updates.");
+      }
+    }
   }
 
   void _startAutoCheck() {
@@ -82,18 +139,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        //print("API Response: ${response.body}");
+
+        // Debugging: Print the API response
+        print("API Response: ${response.body}");
 
         // Filter out items where status is "normal"
         List<dynamic> newItems =
             (data['items'] ?? [])
-                .where((item) => item['status'] != "normal")
+                .where(
+                  (item) =>
+                      item['statuses'] != null && item['statuses'].isNotEmpty,
+                )
                 .toList();
 
         if (mounted) {
           setState(() {
             lowStockItems = newItems;
-            hasLowStock = newItems.isNotEmpty;
+            hasLowStock =
+                newItems.isNotEmpty; // Update hasLowStock based on newItems
           });
         }
       } else {
@@ -286,7 +349,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       body: Column(
         children: [
           Center(

@@ -34,12 +34,13 @@ class _InventoryPageState extends State<InventoryPage> {
     super.initState();
     fetchItems();
     fetchCategories();
-    syncPendingUpdates(); // Sync pending offline updates when online
     syncOfflineUpdates();
+    syncOnlineToOffline();
   }
 
   Future<void> syncOfflineUpdates() async {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
+    final inventoryBox = await Hive.openBox('inventory');
 
     if (pendingUpdatesBox.isNotEmpty) {
       List<Map<String, dynamic>> updates = [];
@@ -47,7 +48,8 @@ class _InventoryPageState extends State<InventoryPage> {
       for (var item in pendingUpdatesBox.values) {
         updates.add({
           'qr_code_data': item['qr_code_data'],
-          'quantity_removed': item['quantity_removed'],
+          'quantity_removed': item['quantity_removed'] ?? 0,
+          'quantity_added': item['quantity_added'] ?? 0,
         });
       }
 
@@ -60,8 +62,26 @@ class _InventoryPageState extends State<InventoryPage> {
       if (response.statusCode == 200) {
         final result = jsonDecode(response.body);
         if (result['success']) {
-          // Clear synced updates
+          for (var update in updates) {
+            int index = inventoryBox.values.toList().indexWhere(
+              (item) => item['qr_code_data'] == update['qr_code_data'],
+            );
+
+            if (index != -1) {
+              var item = inventoryBox.getAt(index);
+              item['quantity'] =
+                  (item['quantity'] ?? 0) -
+                  (update['quantity_removed'] ?? 0) +
+                  (update['quantity_added'] ?? 0);
+              inventoryBox.putAt(index, item);
+            }
+          }
+
           await pendingUpdatesBox.clear();
+
+          // **Force UI Refresh**
+          setState(() {});
+
           print("Offline updates synced successfully!");
         } else {
           print("Sync failed: ${result['message']}");
@@ -72,39 +92,73 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
-  Future<void> syncPendingUpdates() async {
-    final pendingUpdatesBox = await Hive.openBox('pending_updates');
+  /// Sync the latest MySQL data to Hive
+  Future<void> syncOnlineToOffline() async {
+    try {
+      final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
 
-    if (pendingUpdatesBox.isNotEmpty) {
-      List<Map<String, dynamic>> pendingUpdates = [];
+      if (response.statusCode == 200) {
+        final List<dynamic> onlineItems = jsonDecode(response.body)['items'];
+        final box = await Hive.openBox('inventory');
 
-      for (var update in pendingUpdatesBox.values) {
-        pendingUpdates.add({
-          'qr_code_data': update['qr_code_data'],
-          'quantity_removed': update['quantity_removed'],
-        });
-      }
+        for (var item in onlineItems) {
+          String qrCode = item['qr_code_data'];
+          int existingIndex = box.values.toList().indexWhere(
+            (existingItem) => existingItem['qr_code_data'] == qrCode,
+          );
 
-      try {
-        final response = await http.post(
-          Uri.parse("$BASE_URL/sync_offline_updates.php"),
-          headers: {"Content-Type": "application/json"},
-          body: jsonEncode({'updates': pendingUpdates}),
-        );
-
-        if (response.statusCode == 200) {
-          print("Pending updates synced successfully!");
-          await pendingUpdatesBox.clear(); // Clear after successful sync
-        } else {
-          print("Error syncing updates: ${response.body}");
+          if (existingIndex != -1) {
+            box.putAt(existingIndex, item);
+          } else {
+            box.add(item);
+          }
         }
-      } catch (e) {
-        print("Network error while syncing: $e");
+
+        // **Force UI Refresh**
+        setState(() {});
+
+        print("Sync successful: MySQL data updated in Hive!");
+      } else {
+        print("Failed to fetch online data: ${response.statusCode}");
       }
-    } else {
-      print("No pending updates to sync.");
+    } catch (e) {
+      print("Error syncing data: $e");
     }
   }
+
+  // Future<void> syncPendingUpdates() async {
+  //   final pendingUpdatesBox = await Hive.openBox('pending_updates');
+
+  //   if (pendingUpdatesBox.isNotEmpty) {
+  //     List<Map<String, dynamic>> pendingUpdates = [];
+
+  //     for (var update in pendingUpdatesBox.values) {
+  //       pendingUpdates.add({
+  //         'qr_code_data': update['qr_code_data'],
+  //         'quantity_removed': update['quantity_removed'],
+  //       });
+  //     }
+
+  //     try {
+  //       final response = await http.post(
+  //         Uri.parse("$BASE_URL/sync_offline_updates.php"),
+  //         headers: {"Content-Type": "application/json"},
+  //         body: jsonEncode({'updates': pendingUpdates}),
+  //       );
+
+  //       if (response.statusCode == 200) {
+  //         print("Pending updates synced successfully!");
+  //         await pendingUpdatesBox.clear(); // Clear after successful sync
+  //       } else {
+  //         print("Error syncing updates: ${response.body}");
+  //       }
+  //     } catch (e) {
+  //       print("Network error while syncing: $e");
+  //     }
+  //   } else {
+  //     print("No pending updates to sync.");
+  //   }
+  // }
 
   Future<void> fetchCategories() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
@@ -206,21 +260,23 @@ class _InventoryPageState extends State<InventoryPage> {
               TextButton(
                 onPressed: () {
                   Navigator.pop(context); // Close the dialog
-                  // Navigate to UpdateItemPage for adding items
                   Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder:
                           (context) => UpdateItemPage(qrCodeData: scannedQR),
                     ),
-                  );
+                  ).then((_) {
+                    // 🔄 Sync right after returning
+                    syncOfflineUpdates();
+                    syncOnlineToOffline();
+                  });
                 },
                 child: const Text('Add Items'),
               ),
               TextButton(
                 onPressed: () {
                   Navigator.pop(context); // Close the dialog
-                  // Navigate to RemoveQuantityPage for removing items
                   Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -228,7 +284,11 @@ class _InventoryPageState extends State<InventoryPage> {
                           (context) =>
                               RemoveQuantityPage(qrCodeData: scannedQR),
                     ),
-                  );
+                  ).then((_) {
+                    // 🔄 Sync right after returning
+                    syncOfflineUpdates();
+                    syncOnlineToOffline();
+                  });
                 },
                 child: const Text('Remove Items'),
               ),

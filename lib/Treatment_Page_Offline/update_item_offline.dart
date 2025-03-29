@@ -15,26 +15,41 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
 
   Future<void> addQuantity() async {
     final inventoryBox = await Hive.openBox('inventory');
+    final pendingUpdatesBox = await Hive.openBox('pending_updates');
 
-    // Fetch the item from the inventory box using the QR code
-    var item = inventoryBox.get(widget.qrCodeData);
+    Map<dynamic, dynamic> inventoryMap = inventoryBox.toMap();
+    var itemKey;
+    var item;
+    print("Scanned QR Code Data: ${widget.qrCodeData}");
+
+    // Search for the correct item by matching qr_code_data
+    for (var key in inventoryMap.keys) {
+      var currentItem = inventoryMap[key];
+      if (currentItem['qr_code_data'] == widget.qrCodeData) {
+        item = currentItem;
+        itemKey = key;
+        break;
+      }
+    }
 
     if (item != null) {
-      int currentQuantity =
-          int.tryParse(item['quantity'].toString()) ??
-          0; // Parse current quantity
-      int addQuantity =
-          int.tryParse(quantityController.text) ?? 0; // Parse input quantity
+      int currentQuantity = int.tryParse(item['quantity'].toString()) ?? 0;
+      int addQuantity = int.tryParse(quantityController.text) ?? 0;
 
       if (addQuantity > 0) {
-        // Update the quantity
         item['quantity'] = currentQuantity + addQuantity;
-        await inventoryBox.put(widget.qrCodeData, item);
+        await inventoryBox.put(itemKey, item);
+
+        // Save the addition to pending updates for later sync
+        pendingUpdatesBox.add({
+          'qr_code_data': widget.qrCodeData,
+          'quantity_added': addQuantity,
+        });
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Quantity added successfully (Offline).')),
         );
-        Navigator.pop(context, true); // Return to the previous page
+        Navigator.pop(context, true);
       } else {
         ScaffoldMessenger.of(
           context,

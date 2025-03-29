@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Page_Offline/offline_inventory_scanning.dart';
 import 'package:qrqragain/constants.dart';
-import 'package:qrqragain/hive_display.dart';
 import 'package:qrqragain/home.dart';
 import 'package:qrqragain/login/create/register.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void initState() {
     super.initState();
     // syncInventory(); // Sync data on app start
-    checkInternetAndSync();
+    //   checkInternetAndSync();
   }
 
   Future<void> checkInternetAndSync() async {
@@ -43,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
           Uri.parse("$BASE_URL/check_connection.php"),
         );
         if (response.statusCode == 200) {
-          syncOfflineUpdates();
+          //  syncOfflineUpdates();
         }
       } catch (e) {
         print("No internet connection");
@@ -128,39 +127,40 @@ class _LoginScreenState extends State<LoginScreen> {
   /// Sync offline updates to the server
   /// This function retrieves pending updates from the Hive database and sends them to the server.
   /// It also clears the pending updates after a successful sync.
-  Future<void> syncOfflineUpdates() async {
-    final pendingUpdatesBox = await Hive.openBox('pending_updates');
+  // Future<void> syncOfflineUpdates() async {
+  //   final pendingUpdatesBox = await Hive.openBox('pending_updates');
 
-    if (pendingUpdatesBox.isNotEmpty) {
-      List<Map<String, dynamic>> updates = [];
+  //   if (pendingUpdatesBox.isNotEmpty) {
+  //     List<Map<String, dynamic>> updates = [];
 
-      for (var item in pendingUpdatesBox.values) {
-        updates.add({
-          'qr_code_data': item['qr_code_data'],
-          'quantity_removed': item['quantity_removed'],
-        });
-      }
+  //     for (var item in pendingUpdatesBox.values) {
+  //       updates.add({
+  //         'qr_code_data': item['qr_code_data'],
+  //         'quantity_removed':
+  //             item['quantity_removed'] ?? 0, // Default to 0 if null
+  //         'quantity_added': item['quantity_added'] ?? 0, // Default to 0 if null
+  //       });
+  //     }
 
-      final response = await http.post(
-        Uri.parse('$BASE_URL/sync_updates.php'),
-        body: jsonEncode({'updates': updates}),
-        headers: {'Content-Type': 'application/json'},
-      );
+  //     final response = await http.post(
+  //       Uri.parse('$BASE_URL/sync_updates.php'),
+  //       body: jsonEncode({'updates': updates}),
+  //       headers: {'Content-Type': 'application/json'},
+  //     );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success']) {
-          // Clear synced updates
-          await pendingUpdatesBox.clear();
-          print("Offline updates synced successfully!");
-        } else {
-          print("Sync failed: ${result['message']}");
-        }
-      } else {
-        print("Failed to sync offline updates.");
-      }
-    }
-  }
+  //     if (response.statusCode == 200) {
+  //       final result = jsonDecode(response.body);
+  //       if (result['success']) {
+  //         await pendingUpdatesBox.clear(); // Clear synced updates
+  //         print("Offline updates synced successfully!");
+  //       } else {
+  //         print("Sync failed: ${result['message']}");
+  //       }
+  //     } else {
+  //       print("Failed to sync offline updates.");
+  //     }
+  //   }
+  // }
 
   Future<void> loginUser(BuildContext context) async {
     final String email = emailController.text;
@@ -340,27 +340,27 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: const Text('No Account? Register Here'),
               ),
               Text("Offline currently working...."),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => OfflineScanningPage(),
-                    ),
-                  );
-                },
-                child: const Text('Offline Mode'),
-              ),
-              //this will go through to display the hive data
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => HiveDisplay()),
-                  );
-                },
-                child: const Text('Offline Home Page'),
-              ),
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.pushReplacement(
+              //       context,
+              //       MaterialPageRoute(
+              //         builder: (context) => OfflineScanningPage(),
+              //       ),
+              //     );
+              //   },
+              //   child: const Text('Offline Mode'),
+              // ),
+              // //this will go through to display the hive data
+              // TextButton(
+              //   onPressed: () {
+              //     Navigator.pushReplacement(
+              //       context,
+              //       MaterialPageRoute(builder: (context) => HiveDisplay()),
+              //     );
+              //   },
+              //   child: const Text('Offline Home Page'),
+              // ),
             ],
           ),
         ),

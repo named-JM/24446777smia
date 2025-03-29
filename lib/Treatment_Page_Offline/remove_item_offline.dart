@@ -51,9 +51,14 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
   void initState() {
     super.initState();
     // syncInventory(); // Sync inventory when the page initializes
+    printHiveData(); // Print Hive data for debugging
   }
 
   void printHiveData() async {
+    print("Printing Hive data...");
+
+    // Open the Hive box and print its contents
+    // This is just for debugging purposes
     final box = await Hive.openBox('inventory');
     print("Hive Inventory Data: ${box.toMap()}");
   }
@@ -62,18 +67,29 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
     final inventoryBox = await Hive.openBox('inventory');
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
 
-    var item = inventoryBox.get(widget.qrCodeData);
+    Map<dynamic, dynamic> inventoryMap = inventoryBox.toMap();
+    var itemKey;
+    var item;
+    print("Scanned QR Code Data: ${widget.qrCodeData}");
+
+    // Search for the correct item by matching qr_code_data
+    for (var key in inventoryMap.keys) {
+      var currentItem = inventoryMap[key];
+      if (currentItem['qr_code_data'] == widget.qrCodeData) {
+        item = currentItem;
+        itemKey = key;
+        break;
+      }
+    }
+
     if (item != null) {
-      int currentQuantity =
-          int.tryParse(item['quantity'].toString()) ??
-          0; // Ensure it's parsed as an int
+      int currentQuantity = int.tryParse(item['quantity'].toString()) ?? 0;
       int removeQuantity = int.tryParse(quantityController.text) ?? 0;
 
       if (removeQuantity > 0 && removeQuantity <= currentQuantity) {
         item['quantity'] = currentQuantity - removeQuantity;
-        await inventoryBox.put(widget.qrCodeData, item);
+        await inventoryBox.put(itemKey, item);
 
-        // Save to pending_updates for later sync
         pendingUpdatesBox.add({
           'qr_code_data': widget.qrCodeData,
           'quantity_removed': removeQuantity,
@@ -113,7 +129,12 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: removeQuantity,
+
               child: Text('Remove Quantity'),
+            ),
+            ElevatedButton(
+              onPressed: printHiveData,
+              child: Text('Print Hive Data'),
             ),
           ],
         ),
