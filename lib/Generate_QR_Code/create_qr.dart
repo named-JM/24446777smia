@@ -35,12 +35,14 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   Future<void> fetchCategories() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
     if (response.statusCode == 200) {
-      setState(() {
-        categories = jsonDecode(response.body)["categories"];
-        if (categories.isNotEmpty) {
-          selectedCategory = categories[0]["name"]; // Set default category
-        }
-      });
+      if (mounted) {
+        setState(() {
+          categories = jsonDecode(response.body)["categories"];
+          if (categories.isNotEmpty) {
+            selectedCategory = categories[0]["name"]; // Set default category
+          }
+        });
+      }
     }
   }
 
@@ -48,6 +50,25 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   void initState() {
     super.initState();
     fetchCategories();
+  }
+
+  bool validateFields() {
+    if (serialController.text.isEmpty ||
+        brandController.text.isEmpty ||
+        itemNameController.text.isEmpty ||
+        specController.text.isEmpty ||
+        unitController.text.isEmpty ||
+        costController.text.isEmpty ||
+        quantityController.text.isEmpty ||
+        mfgDateController.text.isEmpty ||
+        expDateController.text.isEmpty ||
+        selectedCategory.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please fill in all fields.')));
+      return false;
+    }
+    return true;
   }
 
   Future<void> sendDataToServer(String base64QR) async {
@@ -452,9 +473,11 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
               Center(
                 child: ElevatedButton(
                   onPressed: () async {
-                    generateQR(); // Generate QR code data
-                    saveQR(); // Save the QR Code to Downloads
-                    await saveQRAndSendToServer(); // Capture and send QR code image
+                    if (validateFields()) {
+                      generateQR(); // Generate QR code data
+                      saveQR(); // Save the QR Code to Downloads
+                      await saveQRAndSendToServer(); // Capture and send QR code image
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.green,

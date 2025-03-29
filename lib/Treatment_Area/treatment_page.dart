@@ -24,16 +24,19 @@ class _TreatmentPageState extends State<TreatmentPage> {
   }
 
   Future<void> loadData() async {
-    setState(() {
-      isLoading = true; // Show loading indicator
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = true; // Show loading indicator
+      });
+    }
 
     await checkInternetAndSync();
     await fetchMedicines();
-
-    setState(() {
-      isLoading = false; // Hide loading indicator
-    });
+    if (mounted) {
+      setState(() {
+        isLoading = false; // Hide loading indicator
+      });
+    }
   }
 
   Future<void> checkInternetAndSync() async {

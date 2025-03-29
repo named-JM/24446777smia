@@ -144,14 +144,6 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
             );
           },
         ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.refresh), // Reload button
-            onPressed: () {
-              syncOnlineToOffline(); // Sync MySQL data to Hive
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [

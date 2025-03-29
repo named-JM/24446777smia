@@ -249,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Login'),
+        // title: const Text('Login'),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
@@ -339,7 +339,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 },
                 child: const Text('No Account? Register Here'),
               ),
-              Text("Offline currently working...."),
+              // Text("Offline currently working...."),
               // TextButton(
               //   onPressed: () {
               //     Navigator.pushReplacement(

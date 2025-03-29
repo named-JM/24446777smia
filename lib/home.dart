@@ -141,7 +141,7 @@ class _HomeScreenState extends State<HomeScreen> {
         final data = json.decode(response.body);
 
         // Debugging: Print the API response
-        print("API Response: ${response.body}");
+        //  print("API Response: ${response.body}");
 
         // Filter out items where status is "normal"
         List<dynamic> newItems =

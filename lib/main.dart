@@ -33,13 +33,15 @@ class _MyAppState extends State<MyApp> {
     checkConnectivity();
 
     try {
-      _connectivity.onConnectivityChanged.listen((
-        List<ConnectivityResult> results,
-      ) {
-        setState(() {
-          isOnline =
-              results.isNotEmpty && results.first != ConnectivityResult.none;
-        });
+      _connectivity.onConnectivityChanged.listen((results) {
+        bool currentlyOnline =
+            results.isNotEmpty && results.first != ConnectivityResult.none;
+
+        if (isOnline != currentlyOnline) {
+          setState(() {
+            isOnline = currentlyOnline;
+          });
+        }
       });
     } catch (e, stacktrace) {
       print("Connectivity Listener Error: $e");
@@ -62,7 +64,13 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(home: isOnline ? SplashScreen() : OfflineHomePage());
+    return MaterialApp(
+      home: Builder(
+        builder: (context) {
+          return isOnline ? SplashScreen() : OfflineHomePage();
+        },
+      ),
+    );
   }
 }
 
