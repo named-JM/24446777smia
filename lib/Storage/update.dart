@@ -19,39 +19,95 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       TextEditingController();
   final TextEditingController brandController = TextEditingController();
   final TextEditingController categoryController = TextEditingController();
+  List<String> categories = [];
+  String? selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    fetchItemDetails(); // Fetch existing item details
+    fetchCategories();
+    fetchItemDetails();
   }
 
   Future<void> updateItem() async {
-    final response = await http.post(
-      Uri.parse('$BASE_URL/update_item.php'),
-      body: jsonEncode({
-        'qr_code_data': widget.qrCodeData,
-        'quantity': int.parse(quantityController.text),
-        'exp_date': expirationDateController.text,
-        'brand': brandController.text, // Include brand
-        'category': categoryController.text, // Include category
-      }),
-      headers: {'Content-Type': 'application/json'},
-    );
+    // Validate fields
+    if (quantityController.text.isEmpty ||
+        expirationDateController.text.isEmpty ||
+        brandController.text.isEmpty ||
+        selectedCategory == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please fill in all fields.')));
+      return;
+    }
 
-    if (response.statusCode == 200) {
-      final result = jsonDecode(response.body);
+    // Ensure quantity is a valid number
+    if (int.tryParse(quantityController.text) == null) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(result['message'])));
-      Navigator.pop(context);
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Failed to update item')));
+      ).showSnackBar(SnackBar(content: Text('Please enter a valid quantity.')));
+      return;
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('$BASE_URL/update_item.php'),
+        body: jsonEncode({
+          'qr_code_data': widget.qrCodeData,
+          'quantity': int.parse(quantityController.text),
+          'exp_date': expirationDateController.text,
+          'brand': brandController.text,
+          'category':
+              selectedCategory, // Use selectedCategory instead of categoryController
+        }),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(result['message'])));
+        Navigator.pop(context);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to update item')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('An error occurred. Please try again.')),
+      );
     }
   }
 
+  // Fetch categories from database
+  Future<void> fetchCategories() async {
+    final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
+
+    if (response.statusCode == 200) {
+      final result = jsonDecode(response.body);
+      setState(() {
+        categories =
+            (result['categories'] as List)
+                .map<String>((cat) => cat['name'].toString())
+                .toSet() // Removes duplicates
+                .toList();
+
+        // Ensure the selectedCategory is valid
+        if (selectedCategory == null ||
+            !categories.contains(selectedCategory)) {
+          selectedCategory = categories.isNotEmpty ? categories[0] : null;
+        }
+      });
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to fetch categories')));
+    }
+  }
+
+  // Fetch item details
   Future<void> fetchItemDetails() async {
     final response = await http.post(
       Uri.parse('$BASE_URL/update_get_item.php'),
@@ -64,7 +120,14 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       if (result['success']) {
         setState(() {
           brandController.text = result['brand'] ?? '';
-          categoryController.text = result['category'] ?? '';
+
+          // Ensure category exists before assigning
+          String fetchedCategory = result['category'] ?? '';
+          if (categories.contains(fetchedCategory)) {
+            selectedCategory = fetchedCategory;
+          } else {
+            selectedCategory = null; // Prevents assertion error
+          }
         });
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -79,6 +142,34 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       );
     }
   }
+
+  // Future<void> fetchItemDetails() async {
+  //   final response = await http.post(
+  //     Uri.parse('$BASE_URL/update_get_item.php'),
+  //     body: jsonEncode({'qr_code_data': widget.qrCodeData}),
+  //     headers: {'Content-Type': 'application/json'},
+  //   );
+
+  //   if (response.statusCode == 200) {
+  //     final result = jsonDecode(response.body);
+  //     if (result['success']) {
+  //       setState(() {
+  //         brandController.text = result['brand'] ?? '';
+  //         categoryController.text = result['category'] ?? '';
+  //       });
+  //     } else {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: Text(result['message'] ?? 'Failed to fetch item details'),
+  //         ),
+  //       );
+  //     }
+  //   } else {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Failed to connect to the server')),
+  //     );
+  //   }
+  // }
 
   Future<void> _showMonthYearPicker(
     BuildContext context,
@@ -285,10 +376,31 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
                 'Enter Brand',
                 brandController,
               ), // New field for brand
-              _buildTextField(
-                'Enter Category',
-                categoryController,
-              ), // New field for category
+              SizedBox(height: 10),
+              DropdownButtonFormField<String>(
+                value:
+                    categories.contains(selectedCategory)
+                        ? selectedCategory
+                        : null, // Prevents invalid value
+                onChanged: (value) {
+                  setState(() {
+                    selectedCategory = value;
+                  });
+                },
+                items:
+                    categories.map((category) {
+                      return DropdownMenuItem<String>(
+                        value: category,
+                        child: Text(category),
+                      );
+                    }).toList(),
+                decoration: InputDecoration(
+                  labelText: 'Select Category',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+
+              // New field for category
               SizedBox(height: 20),
               ElevatedButton(onPressed: updateItem, child: Text('Update Item')),
             ],
@@ -301,11 +413,14 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
   Widget _buildTextField(String label, TextEditingController controller) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
+      child: SizedBox(
+        width: double.infinity, // Ensure full width
+        child: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: label,
+            border: OutlineInputBorder(),
+          ),
         ),
       ),
     );
