@@ -7,7 +7,6 @@ import 'package:qrqragain/Treatment_Area/qr.dart';
 import 'package:qrqragain/Treatment_Page_Offline/remove_item_offline.dart';
 import 'package:qrqragain/Treatment_Page_Offline/update_item_offline.dart';
 import 'package:qrqragain/constants.dart';
-import 'package:qrqragain/login/create/login.dart';
 
 class OfflineScanningPage extends StatefulWidget {
   @override
@@ -108,27 +107,6 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
     }
   }
 
-  // void openQRScanner() async {
-  //   String? scannedQR = await Navigator.push(
-  //     context,
-  //     MaterialPageRoute(builder: (context) => QRScannerPage()),
-  //   );
-
-  //   if (scannedQR != null) {
-  //     bool? updated = await Navigator.push(
-  //       context,
-  //       MaterialPageRoute(
-  //         builder:
-  //             (context) => RemoveQuantityPageOffline(qrCodeData: scannedQR),
-  //       ),
-  //     );
-
-  //     if (updated == true) {
-  //       fetchMedicines(); // Refresh inventory if an item was updated
-  //     }
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,19 +116,27 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => LoginScreen()),
-            );
+            Navigator.pop(context);
           },
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.qr_code_scanner, color: Colors.white),
+            iconSize: 40,
+            onPressed: () {
+              openQRScanner(); // Sync online data to offline
+            },
+          ),
+        ],
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          ElevatedButton(
-            onPressed: openQRScanner,
-            child: const Text('Scan QR'),
-          ),
+          // ElevatedButton(
+          //   onPressed: openQRScanner,
+          //   child: const Text('Scan QR', style: TextStyle(color: Colors.white)),
+          //   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+          // ),
           Expanded(
             child: RefreshIndicator(
               onRefresh: fetchMedicines,
@@ -158,10 +144,25 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
                 itemCount: items.length,
                 itemBuilder: (context, index) {
                   final medicine = items[index];
+
+                  final itemName = medicine['item_name'] ?? 'Unknown Item';
+                  final quantity = medicine['quantity'] ?? 0;
+                  final expDate = medicine['exp_date'];
+                  final brand = medicine['brand'];
+                  final category = medicine['category'] ?? 'Unknown Category';
+
                   return Card(
                     child: ListTile(
-                      title: Text(medicine['item_name']),
-                      subtitle: Text('Quantity: ${medicine['quantity']}'),
+                      title: Text(itemName),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text("Quantity: $quantity"),
+                          Text("Expiration Date: $expDate"),
+                          Text("Brand: $brand"),
+                          Text("Category: $category"),
+                        ],
+                      ),
                     ),
                   );
                 },

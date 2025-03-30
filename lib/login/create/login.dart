@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -21,12 +22,39 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
+  StreamSubscription? _connectivitySubscription;
 
   @override
   void initState() {
     super.initState();
     // syncInventory(); // Sync data on app start
-    //   checkInternetAndSync();
+    checkInternetAndSync(); // Check internet connection and sync data
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      checkInternetAndSync();
+    });
+    listenToConnectivityChanges(); // Start listening for connectivity changes
+  }
+
+  void listenToConnectivityChanges() {
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      connectivityResult,
+    ) {
+      if (connectivityResult == ConnectivityResult.none) {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => OfflineHomePage()),
+          );
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _connectivitySubscription
+        ?.cancel(); // Stop listening when widget is destroyed
+    super.dispose();
   }
 
   Future<void> checkInternetAndSync() async {
@@ -41,44 +69,57 @@ class _LoginScreenState extends State<LoginScreen> {
         final response = await http.get(
           Uri.parse("$BASE_URL/check_connection.php"),
         );
+
         if (response.statusCode == 200) {
-          //  syncOfflineUpdates();
+          print("Internet Available");
+        } else {
+          print("Server not reachable, going offline...");
+          if (mounted) {
+            showNoInternetDialog();
+          }
         }
       } catch (e) {
-        print("No internet connection");
+        print(
+          "No internet connection detected (exception). Switching to offline.",
+        );
+        if (mounted) {
+          showNoInternetDialog();
+        }
       }
     }
   }
 
   void showNoInternetDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("No Internet Connection"),
-          content: Text(
-            "You're offline. Would you like to switch to offline mode?",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context), // Dismiss the dialog
-              child: Text("Cancel"),
+    Future.delayed(Duration.zero, () {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("No Internet Connection"),
+            content: Text(
+              "You're offline. Would you like to switch to offline mode?",
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context); // Close the dialog
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(builder: (context) => OfflineHomePage()),
-                );
-              },
-              child: Text("Go Offline"),
-            ),
-          ],
-        );
-      },
-    );
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text("Cancel"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(builder: (context) => OfflineHomePage()),
+                  );
+                },
+                child: Text("Go Offline"),
+              ),
+            ],
+          );
+        },
+      );
+    });
   }
 
   Future<void> syncInventory() async {

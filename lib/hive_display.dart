@@ -37,9 +37,25 @@ class _HiveDisplayState extends State<HiveDisplay> {
                 itemBuilder: (context, index) {
                   final key = inventoryBox.keyAt(index);
                   final item = inventoryBox.get(key);
+
+                  // Safely retrieve fields from the item
+                  final itemName = item['item_name'] ?? 'Unknown Item';
+                  final quantity = item['quantity'] ?? 0;
+                  final expDate = item['exp_date'] ?? 'N/A';
+                  final brand = item['brand'] ?? 'Unknown Brand';
+                  final category = item['category'] ?? 'Unknown Category';
+
                   return ListTile(
-                    title: Text(item['item_name']),
-                    subtitle: Text("Quantity: ${item['quantity']}"),
+                    title: Text(itemName),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("Quantity: $quantity"),
+                        Text("Expiration Date: $expDate"),
+                        Text("Brand: $brand"),
+                        Text("Category: $category"),
+                      ],
+                    ),
                   );
                 },
               ),

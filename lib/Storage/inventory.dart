@@ -38,6 +38,14 @@ class _InventoryPageState extends State<InventoryPage> {
     syncOnlineToOffline();
   }
 
+  /// Sync offline updates to MySQL
+  /// and update Hive database
+  /// This function will be called when the app is online
+  /// and there are pending updates in the Hive database
+  /// It will send the updates to the server and update the Hive database
+  /// with the new data
+  /// It will also clear the pending updates from the Hive database
+  /// and refresh the UI
   Future<void> syncOfflineUpdates() async {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
     final inventoryBox = await Hive.openBox('inventory');
@@ -50,49 +58,67 @@ class _InventoryPageState extends State<InventoryPage> {
           'qr_code_data': item['qr_code_data'],
           'quantity_removed': item['quantity_removed'] ?? 0,
           'quantity_added': item['quantity_added'] ?? 0,
+          'exp_date': item['exp_date'] ?? 'N/A',
+          'brand': item['brand'] ?? 'Unknown Brand',
+          'category': item['category'] ?? 'Uncategorized', // Add category field
         });
       }
 
-      final response = await http.post(
-        Uri.parse('$BASE_URL/sync_updates.php'),
-        body: jsonEncode({'updates': updates}),
-        headers: {'Content-Type': 'application/json'},
-      );
+      print("Sending updates: ${jsonEncode({'updates': updates})}");
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success']) {
-          for (var update in updates) {
-            int index = inventoryBox.values.toList().indexWhere(
-              (item) => item['qr_code_data'] == update['qr_code_data'],
-            );
+      try {
+        final response = await http.post(
+          Uri.parse('$BASE_URL/sync_updates.php'),
+          body: jsonEncode({'updates': updates}),
+          headers: {'Content-Type': 'application/json'},
+        );
 
-            if (index != -1) {
-              var item = inventoryBox.getAt(index);
-              item['quantity'] =
-                  (item['quantity'] ?? 0) -
-                  (update['quantity_removed'] ?? 0) +
-                  (update['quantity_added'] ?? 0);
-              inventoryBox.putAt(index, item);
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+
+          print("Server Response: ${response.body}"); // Debugging
+          if (result['success']) {
+            for (var update in updates) {
+              int index = inventoryBox.values.toList().indexWhere(
+                (item) => item['qr_code_data'] == update['qr_code_data'],
+              );
+
+              if (index != -1) {
+                var item = inventoryBox.getAt(index);
+                item['quantity'] =
+                    (item['quantity'] ?? 0) -
+                    (update['quantity_removed'] ?? 0) +
+                    (update['quantity_added'] ?? 0);
+                item['exp_date'] = update['exp_date'];
+                item['brand'] = update['brand'];
+                item['category'] = update['category']; // Update category
+                inventoryBox.putAt(index, item);
+              }
             }
+            await pendingUpdatesBox.clear();
+            setState(() {});
+            print("Offline updates synced successfully!");
+          } else {
+            print("Sync failed: ${result['message']}");
           }
-
-          await pendingUpdatesBox.clear();
-
-          // **Force UI Refresh**
-          setState(() {});
-
-          print("Offline updates synced successfully!");
         } else {
-          print("Sync failed: ${result['message']}");
+          print(
+            "Failed to sync offline updates. Server response: ${response.body}",
+          );
         }
-      } else {
-        print("Failed to sync offline updates.");
+      } catch (e) {
+        print("Sync error: $e");
       }
     }
   }
 
   /// Sync the latest MySQL data to Hive
+  /// This function will be called when the app is online
+  /// and there are no pending updates in the Hive database
+  /// It will fetch the latest data from the server
+  /// and update the Hive database with the new data
+  /// It will also clear the old data from the Hive database
+  /// and refresh the UI
   Future<void> syncOnlineToOffline() async {
     try {
       final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
@@ -186,6 +212,7 @@ class _InventoryPageState extends State<InventoryPage> {
 
   Future<void> fetchItems() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
+    print("Raw Response: ${response.body}"); // Debugging
     if (response.statusCode == 200) {
       final jsonResponse = jsonDecode(response.body);
 

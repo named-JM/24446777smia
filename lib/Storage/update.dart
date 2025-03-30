@@ -57,8 +57,7 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
           'quantity': int.parse(quantityController.text),
           'exp_date': expirationDateController.text,
           'brand': brandController.text,
-          'category':
-              selectedCategory, // Use selectedCategory instead of categoryController
+          'category': selectedCategory,
         }),
         headers: {'Content-Type': 'application/json'},
       );
@@ -149,7 +148,6 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
   //     body: jsonEncode({'qr_code_data': widget.qrCodeData}),
   //     headers: {'Content-Type': 'application/json'},
   //   );
-
   //   if (response.statusCode == 200) {
   //     final result = jsonDecode(response.body);
   //     if (result['success']) {

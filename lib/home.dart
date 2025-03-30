@@ -10,30 +10,6 @@ import 'package:qrqragain/Storage/inventory.dart';
 import 'package:qrqragain/Treatment_Area/treatment_page.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
-import 'package:qrqragain/offline_db.dart';
-
-class SyncService {
-  static Future<void> syncPendingUpdates() async {
-    var connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none)
-      return; // Skip if offline
-
-    List<Map<String, dynamic>> updates =
-        await LocalDatabase.getPendingUpdates();
-    for (int i = 0; i < updates.length; i++) {
-      var update = updates[i];
-      var response = await http.post(
-        Uri.parse('$BASE_URL/sync.php'),
-        body: jsonEncode(update),
-        headers: {'Content-Type': 'application/json'},
-      );
-
-      if (response.statusCode == 200) {
-        LocalDatabase.deletePendingUpdate(i); // Remove after successful sync
-      }
-    }
-  }
-}
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -44,11 +20,13 @@ class _HomeScreenState extends State<HomeScreen> {
   bool hasLowStock = false;
   List<dynamic> lowStockItems = [];
   Timer? _timer;
+  List<String> categories = [];
+  String? selectedCategory;
 
   @override
   void initState() {
     super.initState();
-    syncOfflineUpdates();
+
     checkLowStock(); // Initial check for low stock
 
     // Ensure first API call after UI build
@@ -57,6 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     _startAutoCheck(); // Start auto-refresh
+    syncOfflineUpdates();
+    fetchCategories(); // Fetch categories from the server
   }
 
   @override
@@ -64,6 +44,38 @@ class _HomeScreenState extends State<HomeScreen> {
     _timer?.cancel(); // Stop timer when the widget is disposed
     super.dispose();
   }
+
+  Future<void> fetchCategories() async {
+    final categoryBox = await Hive.openBox('categories');
+
+    final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
+
+    if (response.statusCode == 200) {
+      final result = jsonDecode(response.body);
+      List<String> fetchedCategories =
+          (result['categories'] as List)
+              .map<String>((cat) => cat['name'].toString())
+              .toSet()
+              .toList();
+
+      setState(() {
+        categories = fetchedCategories;
+
+        if (selectedCategory == null ||
+            !categories.contains(selectedCategory)) {
+          selectedCategory = categories.isNotEmpty ? categories[0] : null;
+        }
+      });
+      print(fetchedCategories);
+      // Save categories offline
+      await categoryBox.put('categories', fetchedCategories);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to fetch categories')));
+    }
+  }
+  //pUNTAGNGINANGBBUAHYTOAYOKONAHASDAOYOKOAAYOKONA
 
   Future<void> syncOfflineUpdates() async {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
@@ -77,44 +89,52 @@ class _HomeScreenState extends State<HomeScreen> {
           'qr_code_data': item['qr_code_data'],
           'quantity_removed': item['quantity_removed'] ?? 0,
           'quantity_added': item['quantity_added'] ?? 0,
+          'exp_date': item['exp_date'] ?? 'N/A',
+          'brand': item['brand'] ?? 'Unknown Brand',
         });
       }
+      print("Sending updates: ${jsonEncode({'updates': updates})}");
+      try {
+        final response = await http.post(
+          Uri.parse('$BASE_URL/sync_updates.php'),
+          body: jsonEncode({'updates': updates}),
+          headers: {'Content-Type': 'application/json'},
+        );
 
-      final response = await http.post(
-        Uri.parse('$BASE_URL/sync_updates.php'),
-        body: jsonEncode({'updates': updates}),
-        headers: {'Content-Type': 'application/json'},
-      );
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        if (result['success']) {
-          for (var update in updates) {
-            int index = inventoryBox.values.toList().indexWhere(
-              (item) => item['qr_code_data'] == update['qr_code_data'],
-            );
+          print("Server Response: ${response.body}"); // Debugging
+          if (result['success']) {
+            for (var update in updates) {
+              int index = inventoryBox.values.toList().indexWhere(
+                (item) => item['qr_code_data'] == update['qr_code_data'],
+              );
 
-            if (index != -1) {
-              var item = inventoryBox.getAt(index);
-              item['quantity'] =
-                  (item['quantity'] ?? 0) -
-                  (update['quantity_removed'] ?? 0) +
-                  (update['quantity_added'] ?? 0);
-              inventoryBox.putAt(index, item);
+              if (index != -1) {
+                var item = inventoryBox.getAt(index);
+                item['quantity'] =
+                    (item['quantity'] ?? 0) -
+                    (update['quantity_removed'] ?? 0) +
+                    (update['quantity_added'] ?? 0);
+                item['exp_date'] = update['exp_date'];
+                item['brand'] = update['brand'];
+                inventoryBox.putAt(index, item);
+              }
             }
+            await pendingUpdatesBox.clear();
+            setState(() {});
+            print("Offline updates synced successfully!");
+          } else {
+            print("Sync failed: ${result['message']}");
           }
-
-          await pendingUpdatesBox.clear();
-
-          // **Force UI Refresh**
-          setState(() {});
-
-          print("Offline updates synced successfully!");
         } else {
-          print("Sync failed: ${result['message']}");
+          print(
+            "Failed to sync offline updates. Server response: ${response.body}",
+          );
         }
-      } else {
-        print("Failed to sync offline updates.");
+      } catch (e) {
+        print("Sync error: $e");
       }
     }
   }
