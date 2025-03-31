@@ -159,40 +159,6 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
-  // Future<void> syncPendingUpdates() async {
-  //   final pendingUpdatesBox = await Hive.openBox('pending_updates');
-
-  //   if (pendingUpdatesBox.isNotEmpty) {
-  //     List<Map<String, dynamic>> pendingUpdates = [];
-
-  //     for (var update in pendingUpdatesBox.values) {
-  //       pendingUpdates.add({
-  //         'qr_code_data': update['qr_code_data'],
-  //         'quantity_removed': update['quantity_removed'],
-  //       });
-  //     }
-
-  //     try {
-  //       final response = await http.post(
-  //         Uri.parse("$BASE_URL/sync_offline_updates.php"),
-  //         headers: {"Content-Type": "application/json"},
-  //         body: jsonEncode({'updates': pendingUpdates}),
-  //       );
-
-  //       if (response.statusCode == 200) {
-  //         print("Pending updates synced successfully!");
-  //         await pendingUpdatesBox.clear(); // Clear after successful sync
-  //       } else {
-  //         print("Error syncing updates: ${response.body}");
-  //       }
-  //     } catch (e) {
-  //       print("Network error while syncing: $e");
-  //     }
-  //   } else {
-  //     print("No pending updates to sync.");
-  //   }
-  // }
-
   Future<void> fetchCategories() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
     if (response.statusCode == 200) {
@@ -220,24 +186,32 @@ class _InventoryPageState extends State<InventoryPage> {
   Future<void> fetchItems() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
     print("Raw Response: ${response.body}"); // Debugging
+
     if (response.statusCode == 200) {
-      final jsonResponse = jsonDecode(response.body);
+      try {
+        final jsonResponse = jsonDecode(response.body);
+        print("Parsed JSON: $jsonResponse"); // Debugging
 
-      if (jsonResponse is Map<String, dynamic> &&
-          jsonResponse.containsKey('items')) {
-        final itemsData = jsonResponse['items'];
+        if (jsonResponse is Map<String, dynamic> &&
+            jsonResponse.containsKey('items')) {
+          final itemsData = jsonResponse['items'];
 
-        if (itemsData is List) {
-          setState(() {
-            items = itemsData;
-            filteredItems = items;
-            isLoading = false; // Set loading to false
-          });
+          if (itemsData is List) {
+            if (mounted) {
+              setState(() {
+                items = itemsData;
+                filteredItems = items;
+                isLoading = false; // Set loading to false
+              });
+            }
+          } else {
+            print("Error: 'items' is not a list.");
+          }
         } else {
-          print("Error: 'items' is not a list.");
+          print("Error: 'items' key not found in the response.");
         }
-      } else {
-        print("Error: 'items' key not found in the response.");
+      } catch (e) {
+        print("Error parsing JSON: $e");
       }
     } else {
       print(
@@ -341,40 +315,12 @@ class _InventoryPageState extends State<InventoryPage> {
       return;
     }
 
-    // **1️⃣ Prepare CSV Data**
-    List<List<dynamic>> csvData = [
-      [
-        "Item Name",
-        "Brand",
-        "Category",
-        "Specification",
-        "Unit",
-        "Cost",
-        "Quantity",
-        "Exp Date",
-      ],
-    ];
+    // **1️⃣ Request Storage Permission Properly**
+    PermissionStatus status = await Permission.manageExternalStorage.request();
 
-    for (var item in items) {
-      csvData.add([
-        item['item_name'],
-        item['brand'],
-        item['category'],
-        item['specification'],
-        item['unit'],
-        item['cost'],
-        item['quantity'],
-        item['exp_date'] ?? 'N/A',
-      ]);
-    }
-
-    // Convert CSV data to a String
-    String csvString = const ListToCsvConverter().convert(csvData);
-
-    // **2️⃣ Request Storage Permission (Android 10 and below)**
-    if (await Permission.storage.request().isGranted) {
+    if (status.isGranted) {
       try {
-        // **3️⃣ Get the "Downloads" directory**
+        // **2️⃣ Get the "Downloads" directory**
         Directory downloadsDirectory = Directory(
           '/storage/emulated/0/Download',
         );
@@ -383,18 +329,38 @@ class _InventoryPageState extends State<InventoryPage> {
           downloadsDirectory.createSync(recursive: true);
         }
 
-        // **4️⃣ Save the file in the Downloads folder**
+        // **3️⃣ Save the file in the Downloads folder**
         String filePath = "${downloadsDirectory.path}/inventory_data.csv";
         File file = File(filePath);
-        await file.writeAsString(csvString);
-
-        // **5️⃣ Show success message**
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              "✅ CSV saved to Downloads folder: inventory_data.csv",
+        await file.writeAsString(
+          const ListToCsvConverter().convert([
+            [
+              "Item Name",
+              "Brand",
+              "Category",
+              "Specification",
+              "Unit",
+              "Cost",
+              "Quantity",
+              "Exp Date",
+            ],
+            ...items.map(
+              (item) => [
+                item['item_name'],
+                item['brand'],
+                item['category'],
+                item['specification'],
+                item['unit'],
+                item['cost'],
+                item['quantity'],
+                item['exp_date'] ?? 'N/A',
+              ],
             ),
-          ),
+          ]),
+        );
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("✅ CSV saved to Downloads folder.")),
         );
 
         print("CSV File saved at: $filePath");
@@ -404,6 +370,31 @@ class _InventoryPageState extends State<InventoryPage> {
         ).showSnackBar(SnackBar(content: Text("❌ Error saving CSV: $e")));
         print("Error saving CSV: $e");
       }
+    } else if (status.isPermanentlyDenied) {
+      // **4️⃣ Show Dialog Only if User Permanently Denied**
+      showDialog(
+        context: context,
+        builder:
+            (context) => AlertDialog(
+              title: Text("Storage Permission Required"),
+              content: Text(
+                "Please allow storage permission in settings to save CSV files.",
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text("Cancel"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    openAppSettings(); // Open settings for permissions
+                    Navigator.pop(context);
+                  },
+                  child: Text("Open Settings"),
+                ),
+              ],
+            ),
+      );
     } else {
       ScaffoldMessenger.of(
         context,
