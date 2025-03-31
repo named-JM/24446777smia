@@ -257,53 +257,75 @@ class _InventoryPageState extends State<InventoryPage> {
     );
 
     if (scannedQR != null) {
-      // Show a dialog to choose between Add or Remove
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Select Action'),
-            content: const Text('Do you want to add or remove items?'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => UpdateItemPage(qrCodeData: scannedQR),
-                    ),
-                  ).then((_) {
-                    // 🔄 Sync right after returning
-                    syncOfflineUpdates();
-                    syncOnlineToOffline();
-                  });
-                },
-                child: const Text('Add Items'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              RemoveQuantityPage(qrCodeData: scannedQR),
-                    ),
-                  ).then((_) {
-                    // 🔄 Sync right after returning
-                    syncOfflineUpdates();
-                    syncOnlineToOffline();
-                  });
-                },
-                child: const Text('Remove Items'),
-              ),
-            ],
-          );
-        },
+      // Find the item in the inventory using the scanned QR code
+      final item = items.firstWhere(
+        (item) => item['qr_code_data'] == scannedQR,
+        orElse: () => null, // Return null if not found
       );
+
+      if (item != null) {
+        // Show a dialog to choose between Add or Remove
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Select Action'),
+              content: const Text('Do you want to add or remove items?'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => UpdateItemPage(
+                              serialNo: item['serial_no'],
+                              qrCodeData: item['qr_code_data'],
+                              itemName: item['item_name'],
+                              specification: item['specification'],
+                              unit: item['unit'],
+                              cost: item['cost'].toString(),
+                              //  mfgDate: item['mfg_date'],
+                              qrCodeImage: item['qr_code_image'],
+                            ),
+                      ),
+                    ).then((_) {
+                      // Refresh data after returning from the update page
+                      syncOfflineUpdates();
+                      syncOnlineToOffline();
+                    });
+                  },
+                  child: const Text('Add Items'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) =>
+                                RemoveQuantityPage(qrCodeData: scannedQR),
+                      ),
+                    ).then((_) {
+                      // Refresh data after returning from the remove page
+                      syncOfflineUpdates();
+                      syncOnlineToOffline();
+                    });
+                  },
+                  child: const Text('Remove Items'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        // Show an error if the scanned QR code does not match any item
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Item not found in inventory')));
+      }
     }
   }
 
@@ -571,8 +593,17 @@ class _InventoryPageState extends State<InventoryPage> {
                                           MaterialPageRoute(
                                             builder:
                                                 (context) => UpdateItemPage(
+                                                  serialNo: item['serial_no'],
                                                   qrCodeData:
                                                       item['qr_code_data'],
+                                                  itemName: item['item_name'],
+                                                  specification:
+                                                      item['specification'],
+                                                  unit: item['unit'],
+                                                  cost: item['cost'].toString(),
+                                                  //   mfgDate: item['mfg_date'],
+                                                  qrCodeImage:
+                                                      item['qr_code_image'],
                                                 ),
                                           ),
                                         ).then((_) {

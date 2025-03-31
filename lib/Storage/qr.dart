@@ -37,15 +37,15 @@ class _QRScannerPageState extends State<QRScannerPage> {
       body: Column(
         children: [
           Expanded(child: QRView(key: qrKey, onQRViewCreated: onQRViewCreated)),
-          // ElevatedButton(
-          //   onPressed: () {
-          //     Navigator.pop(
-          //       context,
-          //       'ND2828282,no brnd,Paracentamol,gampt aa sakit,500mg,10,250,03/2025,09/2025,Antibiotic',
-          //     );
-          //   },
-          //   child: Text('Simulate QR Scan / Paracetamol Data'),
-          // ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(
+                context,
+                'ND2828282,no brnd,Paracentamol,gampt aa sakit,500mg,10,250,03/2025,09/2025,Antibiotic',
+              );
+            },
+            child: Text('Simulate QR Scan / Paracetamol Data'),
+          ),
         ],
       ),
     );

@@ -5,9 +5,25 @@ import 'package:http/http.dart' as http;
 import 'package:qrqragain/constants.dart';
 
 class UpdateItemPage extends StatefulWidget {
+  final String serialNo; // Add Serial Number
   final String qrCodeData;
+  final String itemName;
+  final String specification;
+  final String unit;
+  final String cost;
+  // final String mfgDate;
+  final String qrCodeImage;
 
-  UpdateItemPage({required this.qrCodeData});
+  UpdateItemPage({
+    required this.serialNo, // Add Serial Number
+    required this.qrCodeData,
+    required this.itemName,
+    required this.specification,
+    required this.unit,
+    required this.cost,
+    // required this.mfgDate,
+    required this.qrCodeImage,
+  });
 
   @override
   _UpdateItemPageState createState() => _UpdateItemPageState();
@@ -19,6 +35,13 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       TextEditingController();
   final TextEditingController brandController = TextEditingController();
   final TextEditingController categoryController = TextEditingController();
+  final TextEditingController itemNameController = TextEditingController();
+  final TextEditingController specificationController = TextEditingController();
+  final TextEditingController unitController = TextEditingController();
+  final TextEditingController costController = TextEditingController();
+  final TextEditingController manufacturingDateController =
+      TextEditingController();
+  String qrCodeImageValue = '';
   List<String> categories = [];
   String? selectedCategory;
 
@@ -27,10 +50,18 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
     super.initState();
     fetchCategories();
     fetchItemDetails();
+    itemNameController.text = widget.itemName;
+    specificationController.text = widget.specification;
+    unitController.text = widget.unit;
+    costController.text = widget.cost;
+    // manufacturingDateController.text = widget.mfgDate;
+    qrCodeImageValue = widget.qrCodeImage;
   }
 
-  Future<void> updateItem() async {
-    // Validate fields
+  ///The server will create a new entry if the expiration date is new.
+  ///The server will update the quantity if the expiration date already exists.
+  ///The Flutter app will handle both scenarios seamlessly.
+  Future<void> updateItem(int batchCount) async {
     if (quantityController.text.isEmpty ||
         expirationDateController.text.isEmpty ||
         brandController.text.isEmpty ||
@@ -41,7 +72,6 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       return;
     }
 
-    // Ensure quantity is a valid number
     if (int.tryParse(quantityController.text) == null) {
       ScaffoldMessenger.of(
         context,
@@ -50,29 +80,56 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
     }
 
     try {
-      final response = await http.post(
-        Uri.parse('$BASE_URL/update_item.php'),
-        body: jsonEncode({
-          'qr_code_data': widget.qrCodeData,
-          'quantity': int.parse(quantityController.text),
-          'exp_date': expirationDateController.text,
-          'brand': brandController.text,
-          'category': selectedCategory,
-        }),
-        headers: {'Content-Type': 'application/json'},
-      );
+      for (int i = 0; i < batchCount; i++) {
+        final response = await http.post(
+          Uri.parse('$BASE_URL/update_item.php'),
+          body: jsonEncode({
+            'serial_no': widget.serialNo, // Include Serial Number
+            'qr_code_data': widget.qrCodeData,
+            'quantity': int.parse(quantityController.text),
+            'exp_date': expirationDateController.text,
+            'brand': brandController.text,
+            'category': selectedCategory,
+            'item_name': itemNameController.text,
+            'specification': specificationController.text,
+            'unit': unitController.text,
+            'cost': double.tryParse(costController.text) ?? 0.0,
+            // 'mfg_date': manufacturingDateController.text,
+            'qr_code_image': qrCodeImageValue,
+          }),
+          headers: {'Content-Type': 'application/json'},
+        );
 
-      if (response.statusCode == 200) {
-        final result = jsonDecode(response.body);
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(result['message'])));
-        Navigator.pop(context);
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Failed to update item')));
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+          print(
+            jsonEncode({
+              'qr_code_data': widget.qrCodeData,
+              'quantity': quantityController.text,
+              'exp_date': expirationDateController.text,
+              'brand': brandController.text,
+              'category': selectedCategory,
+              'item_name': itemNameController.text,
+              'specification': specificationController.text,
+              'unit': unitController.text,
+              'cost': double.tryParse(costController.text) ?? 0.0,
+              //  'mfg_date': manufacturingDateController.text,
+              'qr_code_image': qrCodeImageValue,
+            }),
+          );
+
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(result['message'])));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to create or update entry')),
+          );
+          break;
+        }
       }
+
+      Navigator.pop(context);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('An error occurred. Please try again.')),
@@ -400,7 +457,12 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
 
               // New field for category
               SizedBox(height: 20),
-              ElevatedButton(onPressed: updateItem, child: Text('Update Item')),
+              ElevatedButton(
+                onPressed: () {
+                  updateItem(1); // Pass a default value for batch count
+                },
+                child: Text('Update Item'),
+              ),
             ],
           ),
         ),
