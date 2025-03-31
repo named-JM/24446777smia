@@ -53,7 +53,10 @@ dependencies:
   csv: ^5.0.2
   open_file: ^3.5.10
   fl_chart: ^0.64.0
-  
+  # open_settings: ^2.0.2
+
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
