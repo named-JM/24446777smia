@@ -147,9 +147,11 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
 
                   final itemName = medicine['item_name'] ?? 'Unknown Item';
                   final quantity = medicine['quantity'] ?? 0;
-                  final expDate = medicine['exp_date'];
-                  final brand = medicine['brand'];
+                  final expDate = medicine['exp_date'] ?? 'N/A';
+                  final brand = medicine['brand'] ?? 'Unknown Brand';
                   final category = medicine['category'] ?? 'Unknown Category';
+                  final qrCodeData =
+                      medicine['qr_code_data'] ?? 'Unknown QR Code';
 
                   return Card(
                     child: ListTile(
@@ -162,6 +164,23 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
                           Text("Brand: $brand"),
                           Text("Category: $category"),
                         ],
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.edit, color: Colors.blue),
+                        tooltip: "Edit Item",
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      UpdateItemOffline(qrCodeData: qrCodeData),
+                            ),
+                          ).then((_) {
+                            // Refresh the list after returning from the update page
+                            fetchMedicines();
+                          });
+                        },
                       ),
                     ),
                   );

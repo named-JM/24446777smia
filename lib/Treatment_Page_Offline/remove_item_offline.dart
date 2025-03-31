@@ -132,10 +132,10 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
 
               child: Text('Remove Quantity'),
             ),
-            ElevatedButton(
-              onPressed: printHiveData,
-              child: Text('Print Hive Data'),
-            ),
+            // ElevatedButton(
+            //   onPressed: printHiveData,
+            //   child: Text('Print Hive Data'),
+            // ),
           ],
         ),
       ),

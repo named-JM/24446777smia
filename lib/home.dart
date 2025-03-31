@@ -81,6 +81,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
     final inventoryBox = await Hive.openBox('inventory');
 
+    for (var item in pendingUpdatesBox.values) {
+      print("Item: $item"); // Debugging
+    }
     if (pendingUpdatesBox.isNotEmpty) {
       List<Map<String, dynamic>> updates = [];
 
@@ -91,9 +94,12 @@ class _HomeScreenState extends State<HomeScreen> {
           'quantity_added': item['quantity_added'] ?? 0,
           'exp_date': item['exp_date'] ?? 'N/A',
           'brand': item['brand'] ?? 'Unknown Brand',
+          'category': item['category'] ?? 'Uncategorized',
         });
       }
+
       print("Sending updates: ${jsonEncode({'updates': updates})}");
+
       try {
         final response = await http.post(
           Uri.parse('$BASE_URL/sync_updates.php'),
@@ -119,6 +125,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     (update['quantity_added'] ?? 0);
                 item['exp_date'] = update['exp_date'];
                 item['brand'] = update['brand'];
+                // Ensure category is updated
+                if (update['category'] != null &&
+                    update['category'] != 'Uncategorized') {
+                  item['category'] = update['category'];
+                }
                 inventoryBox.putAt(index, item);
               }
             }

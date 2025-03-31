@@ -50,6 +50,9 @@ class _InventoryPageState extends State<InventoryPage> {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
     final inventoryBox = await Hive.openBox('inventory');
 
+    for (var item in pendingUpdatesBox.values) {
+      print("Item: $item"); // Debugging
+    }
     if (pendingUpdatesBox.isNotEmpty) {
       List<Map<String, dynamic>> updates = [];
 
@@ -60,7 +63,7 @@ class _InventoryPageState extends State<InventoryPage> {
           'quantity_added': item['quantity_added'] ?? 0,
           'exp_date': item['exp_date'] ?? 'N/A',
           'brand': item['brand'] ?? 'Unknown Brand',
-          'category': item['category'] ?? 'Uncategorized', // Add category field
+          'category': item['category'] ?? 'Uncategorized',
         });
       }
 
@@ -91,7 +94,11 @@ class _InventoryPageState extends State<InventoryPage> {
                     (update['quantity_added'] ?? 0);
                 item['exp_date'] = update['exp_date'];
                 item['brand'] = update['brand'];
-                item['category'] = update['category']; // Update category
+                // Ensure category is updated
+                if (update['category'] != null &&
+                    update['category'] != 'Uncategorized') {
+                  item['category'] = update['category'];
+                }
                 inventoryBox.putAt(index, item);
               }
             }
@@ -557,7 +564,34 @@ class _InventoryPageState extends State<InventoryPage> {
                                     ), // Display status badges
                                   ],
                                 ),
-                                trailing:
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Edit Button
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                      tooltip: "Edit Item",
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) => UpdateItemPage(
+                                                  qrCodeData:
+                                                      item['qr_code_data'],
+                                                ),
+                                          ),
+                                        ).then((_) {
+                                          // Refresh data after returning from the update page
+                                          syncOfflineUpdates();
+                                          syncOnlineToOffline();
+                                        });
+                                      },
+                                    ),
+                                    // QR Code Image or Icon
                                     item['qr_code_image'] != null &&
                                             item['qr_code_image'].startsWith(
                                               'http',
@@ -570,16 +604,17 @@ class _InventoryPageState extends State<InventoryPage> {
                                               (context, error, stackTrace) =>
                                                   Icon(
                                                     Icons.qr_code,
-                                                    size: 100,
+                                                    size: 50,
                                                     color: Colors.grey,
                                                   ),
                                         )
                                         : Icon(
                                           Icons.qr_code,
-                                          size: 80,
+                                          size: 50,
                                           color: Colors.grey,
                                         ),
-                                onTap: openQRScanner,
+                                  ],
+                                ),
                               ),
                             );
                           },

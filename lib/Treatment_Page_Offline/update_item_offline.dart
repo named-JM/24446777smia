@@ -58,9 +58,7 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
     // Validate fields
     if (quantityController.text.isEmpty ||
         expirationDateController.text.isEmpty ||
-        brandController.text.isEmpty
-    //|| selectedCategory == null
-    ) {
+        brandController.text.isEmpty) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Please fill in all fields.')));
@@ -80,6 +78,8 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
       int addQuantity = int.tryParse(quantityController.text) ?? 0;
       item['exp_date'] = expirationDateController.text;
       item['brand'] = brandController.text;
+      item['category'] =
+          selectedCategory ?? "Uncategorized"; // Ensure category is updated
 
       if (addQuantity > 0) {
         item['quantity'] = currentQuantity + addQuantity;
@@ -92,6 +92,10 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
           'quantity_added': addQuantity,
           'exp_date': expirationDateController.text,
           'brand': brandController.text,
+          'category':
+              selectedCategory ??
+              item['category'] ??
+              "Uncategorized", // Ensure category is stored
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
