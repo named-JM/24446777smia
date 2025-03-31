@@ -26,6 +26,7 @@ class _CategoryPageState extends State<CategoryPage> {
         categories = jsonDecode(response.body)["categories"];
       });
     }
+    print("Categories: $categories");
   }
 
   Future<void> addCategory() async {
@@ -65,20 +66,30 @@ class _CategoryPageState extends State<CategoryPage> {
     }
   }
 
-  Future<void> deleteCategory(int id) async {
+  Future<void> deleteCategory(dynamic id) async {
+    // Ensure the id is an integer
+    final int categoryId = int.tryParse(id.toString()) ?? id;
+
     final response = await http.post(
       Uri.parse('$BASE_URL/delete_category.php'),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"id": id}),
+      body: jsonEncode({"id": categoryId}),
     );
 
-    final result = jsonDecode(response.body);
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(result["message"])));
+    try {
+      final result = jsonDecode(response.body);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result["message"])));
 
-    if (result["success"]) {
-      fetchCategories();
+      if (result["success"]) {
+        fetchCategories();
+      }
+    } catch (e) {
+      print("Error decoding JSON: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Invalid response format")));
     }
   }
 
