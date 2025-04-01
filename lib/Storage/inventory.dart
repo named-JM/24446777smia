@@ -36,6 +36,23 @@ class _InventoryPageState extends State<InventoryPage> {
     fetchCategories();
     syncOfflineUpdates();
     syncOnlineToOffline();
+    //clearPendingUpdates();
+  }
+
+  Future<void> clearPendingUpdates() async {
+    try {
+      final pendingUpdatesBox = await Hive.openBox('pending_updates');
+      await pendingUpdatesBox.clear(); // Clear all pending updates
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pending updates cleared successfully.')),
+      );
+      print("Pending updates cleared successfully.");
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to clear pending updates: $e')),
+      );
+      print("Failed to clear pending updates: $e");
+    }
   }
 
   /// Sync offline updates to MySQL
@@ -50,24 +67,35 @@ class _InventoryPageState extends State<InventoryPage> {
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
     final inventoryBox = await Hive.openBox('inventory');
 
-    for (var item in pendingUpdatesBox.values) {
-      print("Item: $item"); // Debugging
-    }
     if (pendingUpdatesBox.isNotEmpty) {
-      List<Map<String, dynamic>> updates = [];
+      Map<String, Map<String, dynamic>> batchedUpdates = {};
 
+      // Group updates by serial_no, qr_code_data, and exp_date
       for (var item in pendingUpdatesBox.values) {
-        updates.add({
-          'qr_code_data': item['qr_code_data'],
-          'quantity_removed': item['quantity_removed'] ?? 0,
-          'quantity_added': item['quantity_added'] ?? 0,
-          'exp_date': item['exp_date'] ?? 'N/A',
-          'brand': item['brand'] ?? 'Unknown Brand',
-          'category': item['category'] ?? 'Uncategorized',
-        });
+        String key =
+            "${item['serial_no']}_${item['qr_code_data']}_${item['exp_date']}";
+
+        if (batchedUpdates.containsKey(key)) {
+          batchedUpdates[key]?['quantity'] += item['quantity_added'];
+        } else {
+          batchedUpdates[key] = {
+            'serial_no': item['serial_no'],
+            'qr_code_data': item['qr_code_data'],
+            'quantity': item['quantity_added'],
+            'exp_date': item['exp_date'],
+            'brand': item['brand'],
+            'category': item['category'],
+            'item_name': item['item_name'], // Add missing fields
+            'specification': item['specification'],
+            'unit': item['unit'],
+            'cost': item['cost'],
+            'qr_code_image': item['qr_code_image'],
+          };
+        }
       }
 
-      print("Sending updates: ${jsonEncode({'updates': updates})}");
+      List<Map<String, dynamic>> updates = batchedUpdates.values.toList();
+      print("Final updates being sent: ${jsonEncode({'updates': updates})}");
 
       try {
         final response = await http.post(
@@ -79,29 +107,26 @@ class _InventoryPageState extends State<InventoryPage> {
         if (response.statusCode == 200) {
           final result = jsonDecode(response.body);
 
-          print("Server Response: ${response.body}"); // Debugging
           if (result['success']) {
             for (var update in updates) {
               int index = inventoryBox.values.toList().indexWhere(
-                (item) => item['qr_code_data'] == update['qr_code_data'],
+                (item) =>
+                    item['qr_code_data'] == update['qr_code_data'] &&
+                    item['exp_date'] == update['exp_date'],
               );
 
               if (index != -1) {
                 var item = inventoryBox.getAt(index);
                 item['quantity'] =
-                    (item['quantity'] ?? 0) -
-                    (update['quantity_removed'] ?? 0) +
-                    (update['quantity_added'] ?? 0);
+                    (item['quantity'] ?? 0) + (update['quantity_added'] ?? 0);
                 item['exp_date'] = update['exp_date'];
                 item['brand'] = update['brand'];
-                // Ensure category is updated
-                if (update['category'] != null &&
-                    update['category'] != 'Uncategorized') {
-                  item['category'] = update['category'];
-                }
+                item['category'] = update['category'];
+
                 inventoryBox.putAt(index, item);
               }
             }
+
             await pendingUpdatesBox.clear();
             setState(() {});
             print("Offline updates synced successfully!");
@@ -111,6 +136,70 @@ class _InventoryPageState extends State<InventoryPage> {
         } else {
           print(
             "Failed to sync offline updates. Server response: ${response.body}",
+          );
+        }
+      } catch (e) {
+        print("Sync error: $e");
+      }
+    }
+  }
+
+  Future<void> syncOfflineRemovals() async {
+    final pendingRemovalsBox = await Hive.openBox('pending_removals');
+    final inventoryBox = await Hive.openBox('inventory');
+
+    if (pendingRemovalsBox.isNotEmpty) {
+      List<Map<String, dynamic>> removals =
+          pendingRemovalsBox.values
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+
+      print("Final removals being sent: ${jsonEncode({'removals': removals})}");
+
+      try {
+        final response = await http.post(
+          Uri.parse('$BASE_URL/sync_removals.php'),
+          body: jsonEncode({'removals': removals}),
+          headers: {'Content-Type': 'application/json'},
+        );
+
+        if (response.statusCode == 200) {
+          final result = jsonDecode(response.body);
+
+          if (result['success']) {
+            for (var removal in removals) {
+              int index = inventoryBox.values.toList().indexWhere(
+                (item) =>
+                    item['serial_no'] == removal['serial_no'] &&
+                    item['exp_date'] == removal['exp_date'],
+              );
+
+              if (index != -1) {
+                var item = inventoryBox.getAt(index);
+                int newQuantity =
+                    (item['quantity'] ?? 0) -
+                    (removal['quantity_removed'] ?? 0);
+
+                if (newQuantity > 0) {
+                  item['quantity'] = newQuantity;
+                  inventoryBox.putAt(index, item);
+                } else {
+                  inventoryBox.deleteAt(
+                    index,
+                  ); // Remove item if quantity is zero
+                }
+              }
+            }
+
+            await pendingRemovalsBox.clear();
+            setState(() {});
+            print("Offline removals synced successfully!");
+          } else {
+            print("Sync failed: ${result['message']}");
+          }
+        } else {
+          print(
+            "Failed to sync offline removals. Server response: ${response.body}",
           );
         }
       } catch (e) {
@@ -134,18 +223,9 @@ class _InventoryPageState extends State<InventoryPage> {
         final List<dynamic> onlineItems = jsonDecode(response.body)['items'];
         final box = await Hive.openBox('inventory');
 
-        for (var item in onlineItems) {
-          String qrCode = item['qr_code_data'];
-          int existingIndex = box.values.toList().indexWhere(
-            (existingItem) => existingItem['qr_code_data'] == qrCode,
-          );
-
-          if (existingIndex != -1) {
-            box.putAt(existingIndex, item);
-          } else {
-            box.add(item);
-          }
-        }
+        // **Batch Update: Replace Entire Inventory**
+        await box.clear(); // Clear outdated Hive inventory
+        await box.addAll(onlineItems); // Add all new items at once
 
         // **Force UI Refresh**
         setState(() {});
@@ -158,6 +238,40 @@ class _InventoryPageState extends State<InventoryPage> {
       print("Error syncing data: $e");
     }
   }
+
+  /// latest
+  // Future<void> syncOnlineToOffline() async {
+  //   try {
+  //     final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
+
+  //     if (response.statusCode == 200) {
+  //       final List<dynamic> onlineItems = jsonDecode(response.body)['items'];
+  //       final box = await Hive.openBox('inventory');
+
+  //       for (var item in onlineItems) {
+  //         String qrCode = item['qr_code_data'];
+  //         int existingIndex = box.values.toList().indexWhere(
+  //           (existingItem) => existingItem['qr_code_data'] == qrCode,
+  //         );
+
+  //         if (existingIndex != -1) {
+  //           box.putAt(existingIndex, item);
+  //         } else {
+  //           box.add(item);
+  //         }
+  //       }
+
+  //       // **Force UI Refresh**
+  //       setState(() {});
+
+  //       print("Sync successful: MySQL data updated in Hive!");
+  //     } else {
+  //       print("Failed to fetch online data: ${response.statusCode}");
+  //     }
+  //   } catch (e) {
+  //     print("Error syncing data: $e");
+  //   }
+  // }
 
   Future<void> fetchCategories() async {
     final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));

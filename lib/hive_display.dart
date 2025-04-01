@@ -39,6 +39,9 @@ class _HiveDisplayState extends State<HiveDisplay> {
                   final item = inventoryBox.get(key);
 
                   // Safely retrieve fields from the item
+                  final qrCodeData = item['qr_code_data'] ?? 'N/A';
+                  final itemId = item['item_id'] ?? 'N/A';
+                  final serialNo = item['serial_no'] ?? 'N/A';
                   final itemName = item['item_name'] ?? 'Unknown Item';
                   final quantity = item['quantity'] ?? 0;
                   final expDate = item['exp_date'] ?? 'N/A';
@@ -50,6 +53,9 @@ class _HiveDisplayState extends State<HiveDisplay> {
                     subtitle: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Text("QR Code Data: $qrCodeData"),
+                        Text("Item ID: $itemId"),
+                        Text("Serial No: $serialNo"),
                         Text("Quantity: $quantity"),
                         Text("Expiration Date: $expDate"),
                         Text("Brand: $brand"),

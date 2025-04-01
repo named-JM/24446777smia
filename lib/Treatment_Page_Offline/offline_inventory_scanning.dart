@@ -1,12 +1,8 @@
-import 'dart:convert';
-
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
-import 'package:http/http.dart' as http;
 import 'package:qrqragain/Treatment_Area/qr.dart';
 import 'package:qrqragain/Treatment_Page_Offline/remove_item_offline.dart';
 import 'package:qrqragain/Treatment_Page_Offline/update_item_offline.dart';
-import 'package:qrqragain/constants.dart';
 
 class OfflineScanningPage extends StatefulWidget {
   @override
@@ -30,31 +26,6 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
     });
   }
 
-  /// Sync the latest MySQL data to Hive
-  Future<void> syncOnlineToOffline() async {
-    try {
-      final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
-
-      if (response.statusCode == 200) {
-        final List<dynamic> onlineItems = jsonDecode(response.body)['items'];
-
-        final box = await Hive.openBox('inventory');
-        await box.clear(); // Clear old data before inserting new data
-
-        for (var item in onlineItems) {
-          await box.add(item);
-        }
-
-        print("Sync successful: MySQL data updated in Hive!");
-        fetchMedicines(); // Refresh UI with updated data
-      } else {
-        print("Failed to fetch online data: ${response.statusCode}");
-      }
-    } catch (e) {
-      print("Error syncing data: $e");
-    }
-  }
-
   void openQRScanner() async {
     // Scan the QR code first
     String? scannedQR = await Navigator.push(
@@ -63,50 +34,75 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
     );
 
     if (scannedQR != null) {
-      // Show a dialog to choose between Add or Remove
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Select Action'),
-            content: const Text('Do you want to add or remove items?'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  // Navigate to UpdateItemPage for adding items
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => UpdateItemOffline(qrCodeData: scannedQR),
-                    ),
-                  );
-                },
-                child: const Text('Add Items'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context); // Close the dialog
-                  // Navigate to RemoveQuantityPage for removing items
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              RemoveQuantityPageOffline(qrCodeData: scannedQR),
-                    ),
-                  );
-                },
-                child: const Text('Remove Items'),
-              ),
-            ],
-          );
-        },
+      // Fetch item details from  Hive based on the scanned QR code
+      final box = await Hive.openBox('inventory');
+      var matchedItem = box.values.firstWhere(
+        (item) => item['qr_code_data'] == scannedQR,
+        orElse: () => null,
       );
+
+      if (matchedItem != null) {
+        String itemName = matchedItem['item_name'] ?? 'Unknown Item';
+        String serialNo = matchedItem['serial_no'] ?? 'N/A';
+
+        // Show a dialog to choose between Add or Remove
+        showDialog(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: const Text('Select Action'),
+              content: const Text('Do you want to add or remove items?'),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                    // Navigate to UpdateItemPage for adding items
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => UpdateItemOffline(
+                              itemName: itemName,
+                              qrCodeData: scannedQR,
+                              serialNo: serialNo,
+                              fromQRScanner:
+                                  true, // Indicate navigation from QR Scanner
+                            ),
+                      ),
+                    );
+                  },
+                  child: const Text('Add Items'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context); // Close the dialog
+                    // Navigate to RemoveQuantityPage for removing items
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => RemoveQuantityPageOffline(
+                              qrCodeData: scannedQR,
+                            ),
+                      ),
+                    );
+                  },
+                  child: const Text('Remove Items'),
+                ),
+              ],
+            );
+          },
+        );
+      } else {
+        // Show error if no matching item is found
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('No matching item found for this QR Code')),
+        );
+      }
     }
   }
 
+  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -130,66 +126,100 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
         ],
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          // ElevatedButton(
-          //   onPressed: openQRScanner,
-          //   child: const Text('Scan QR', style: TextStyle(color: Colors.white)),
-          //   style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-          // ),
-          Expanded(
-            child: RefreshIndicator(
-              onRefresh: fetchMedicines,
-              child: ListView.builder(
-                itemCount: items.length,
-                itemBuilder: (context, index) {
-                  final medicine = items[index];
+      body:
+          items.isEmpty
+              ? Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.cloud_off, size: 80, color: Colors.grey),
+                    SizedBox(height: 20),
+                    Text(
+                      'Please be online first to sync it offline.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
+                    ),
+                    SizedBox(height: 20),
+                    // ElevatedButton(
+                    //   onPressed: () {
+                    //     // Add your sync function here
+                    //     ScaffoldMessenger.of(context).showSnackBar(
+                    //       SnackBar(content: Text('Syncing data...')),
+                    //     );
+                    //   },
+                    //   child: Text('Sync Now'),
+                    //   style: ElevatedButton.styleFrom(
+                    //     backgroundColor: Colors.green,
+                    //   ),
+                    // ),
+                  ],
+                ),
+              )
+              : Column(
+                children: [
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: fetchMedicines,
+                      child: ListView.builder(
+                        itemCount: items.length,
+                        itemBuilder: (context, index) {
+                          final medicine = items[index];
 
-                  final itemName = medicine['item_name'] ?? 'Unknown Item';
-                  final quantity = medicine['quantity'] ?? 0;
-                  final expDate = medicine['exp_date'] ?? 'N/A';
-                  final brand = medicine['brand'] ?? 'Unknown Brand';
-                  final category = medicine['category'] ?? 'Unknown Category';
-                  final qrCodeData =
-                      medicine['qr_code_data'] ?? 'Unknown QR Code';
+                          final serialNo = medicine['serial_no'] ?? 'N/A';
+                          final itemName =
+                              medicine['item_name'] ?? 'Unknown Item';
+                          final quantity = medicine['quantity'] ?? 0;
+                          final expDate = medicine['exp_date'] ?? 'N/A';
+                          final brand = medicine['brand'] ?? 'Unknown Brand';
+                          final category =
+                              medicine['category'] ?? 'Unknown Category';
+                          final qrCodeData =
+                              medicine['qr_code_data'] ?? 'Unknown QR Code';
 
-                  return Card(
-                    child: ListTile(
-                      title: Text(itemName),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text("Quantity: $quantity"),
-                          Text("Expiration Date: $expDate"),
-                          Text("Brand: $brand"),
-                          Text("Category: $category"),
-                        ],
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.edit, color: Colors.blue),
-                        tooltip: "Edit Item",
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) =>
-                                      UpdateItemOffline(qrCodeData: qrCodeData),
+                          return Card(
+                            child: ListTile(
+                              title: Text(itemName),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text("Quantity: $quantity"),
+                                  Text("Expiration Date: $expDate"),
+                                  Text("Brand: $brand"),
+                                  Text("Category: $category"),
+                                ],
+                              ),
+                              trailing: IconButton(
+                                icon: Icon(Icons.edit, color: Colors.blue),
+                                tooltip: "Edit Item",
+                                onPressed: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder:
+                                          (context) => UpdateItemOffline(
+                                            itemName:
+                                                itemName, // ✅ Pass item_name
+                                            qrCodeData:
+                                                qrCodeData, // ✅ Pass qr_code_data
+                                            serialNo:
+                                                serialNo, // ✅ Pass serial_no
+                                            fromQRScanner:
+                                                false, // Indicate navigation from QR Scanner
+                                          ),
+                                    ),
+                                  ).then((_) {
+                                    fetchMedicines();
+                                  });
+                                },
+                              ),
                             ),
-                          ).then((_) {
-                            // Refresh the list after returning from the update page
-                            fetchMedicines();
-                          });
+                          );
                         },
                       ),
                     ),
-                  );
-                },
+                  ),
+                ],
               ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

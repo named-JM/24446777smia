@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qrqragain/Treatment_Page_Offline/offline_inventory_scanning.dart';
+import 'package:qrqragain/hive_display.dart';
 
 class OfflineHomePage extends StatefulWidget {
   const OfflineHomePage({super.key});
@@ -38,6 +39,34 @@ class _OfflineHomePageState extends State<OfflineHomePage> {
                       MaterialPageRoute(
                         builder: (context) => OfflineScanningPage(),
                       ),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.lightGreen, // Green button color
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18.0),
+                    ),
+                    textStyle: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  child: const Text('Scan QR Code'),
+                ),
+              ),
+              const SizedBox(height: 20), // Add spacing between buttons
+              Container(
+                width: double.infinity, // Full width
+                margin: const EdgeInsets.symmetric(
+                  horizontal: 16.0,
+                ), // Add margin
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => HiveDisplay()),
                     );
                   },
                   style: ElevatedButton.styleFrom(

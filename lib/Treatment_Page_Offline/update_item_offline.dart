@@ -2,9 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 class UpdateItemOffline extends StatefulWidget {
+  final String itemName;
   final String qrCodeData;
+  final String serialNo;
+  final bool fromQRScanner; // New flag to indicate source
 
-  UpdateItemOffline({required this.qrCodeData});
+  UpdateItemOffline({
+    required this.itemName,
+    required this.qrCodeData,
+    required this.serialNo,
+    required this.fromQRScanner, // Initialize the flag
+  });
 
   @override
   State<UpdateItemOffline> createState() => _UpdateItemOfflineState();
@@ -20,7 +28,65 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
   @override
   void initState() {
     super.initState();
+
+    fetchItemDetailsOffline();
     fetchCategoriesOffline(); // Load categories from Hive when the screen opens
+    //clearPendingUpdates(); // Clear pending updates when the screen opens
+  }
+
+  Future<void> clearPendingUpdates() async {
+    try {
+      final inventoryBox = await Hive.openBox('inventory');
+      final pendingUpdatesBox = await Hive.openBox('pending_updates');
+      await pendingUpdatesBox.clear(); // Clear all pending updates
+      await inventoryBox.clear(); // Clear all inventory items
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Pending updates cleared successfully.')),
+      );
+      print("Pending updates cleared successfully.");
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to clear pending updates: $e')),
+      );
+      print("Failed to clear pending updates: $e");
+    }
+  }
+
+  Future<void> fetchItemDetailsOffline() async {
+    final inventoryBox = await Hive.openBox('inventory');
+
+    // Find the item in the Hive inventory using qr_code_data
+    final item = inventoryBox.values.firstWhere(
+      (item) => item['qr_code_data'] == widget.qrCodeData,
+      orElse: () => null, // Return null if not found
+    );
+
+    if (item != null) {
+      setState(() {
+        if (!widget.fromQRScanner) {
+          // Fetch expiration date only if not from QR Scanner
+          expirationDateController.text = item['exp_date'] ?? '';
+        }
+        brandController.text = item['brand'] ?? '';
+        selectedCategory = item['category'] ?? '';
+
+        // Additional fields
+        String specification = item['specification'] ?? 'N/A';
+        String unit = item['unit'] ?? 'N/A';
+        String cost = item['cost'] ?? 'N/A';
+        String qrCodeImage = item['qr_code_image'] ?? '';
+
+        print("Specification: $specification");
+        print("Unit: $unit");
+        print("Cost: $cost");
+        print("QR Code Image: $qrCodeImage");
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Item not found in offline inventory')),
+      );
+      Navigator.pop(context); // Close the page if the item is not found
+    }
   }
 
   Future<void> fetchCategoriesOffline() async {
@@ -41,20 +107,6 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
     final inventoryBox = await Hive.openBox('inventory');
     final pendingUpdatesBox = await Hive.openBox('pending_updates');
 
-    Map<dynamic, dynamic> inventoryMap = inventoryBox.toMap();
-    var itemKey;
-    var item;
-    print("Scanned QR Code Data: ${widget.qrCodeData}");
-
-    // Search for the correct item by matching qr_code_data
-    for (var key in inventoryMap.keys) {
-      var currentItem = inventoryMap[key];
-      if (currentItem['qr_code_data'] == widget.qrCodeData) {
-        item = currentItem;
-        itemKey = key;
-        break;
-      }
-    }
     // Validate fields
     if (quantityController.text.isEmpty ||
         expirationDateController.text.isEmpty ||
@@ -66,52 +118,87 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
     }
 
     // Ensure quantity is a valid number
-    if (int.tryParse(quantityController.text) == null) {
+    int? addQuantity = int.tryParse(quantityController.text);
+    if (addQuantity == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Please enter a valid quantity.')));
       return;
     }
 
-    if (item != null) {
-      int currentQuantity = int.tryParse(item['quantity'].toString()) ?? 0;
-      int addQuantity = int.tryParse(quantityController.text) ?? 0;
-      item['exp_date'] = expirationDateController.text;
-      item['brand'] = brandController.text;
-      item['category'] =
-          selectedCategory ?? "Uncategorized"; // Ensure category is updated
+    // Retrieve item details based on qr_code_data
+    final item = inventoryBox.values.firstWhere(
+      (item) => item['qr_code_data'] == widget.qrCodeData,
+      orElse: () => null,
+    );
 
-      if (addQuantity > 0) {
-        item['quantity'] = currentQuantity + addQuantity;
+    String itemName = item?['item_name'] ?? widget.itemName;
+    String serialNo = item?['serial_no'] ?? widget.serialNo;
+    String specification = item?['specification'] ?? 'N/A';
+    String unit = item?['unit'] ?? 'N/A';
+    String cost = item?['cost'] ?? 'N/A';
+    String qrCodeImage = item?['qr_code_image'] ?? '';
 
-        await inventoryBox.put(itemKey, item);
+    // Find if the batch already exists
+    final batchKey = inventoryBox.keys.firstWhere((key) {
+      var item = inventoryBox.get(key);
+      return item['qr_code_data'] == widget.qrCodeData &&
+          item['exp_date'] == expirationDateController.text;
+    }, orElse: () => null);
 
-        // Save the addition to pending updates for later sync
-        pendingUpdatesBox.add({
-          'qr_code_data': widget.qrCodeData,
-          'quantity_added': addQuantity,
-          'exp_date': expirationDateController.text,
-          'brand': brandController.text,
-          'category':
-              selectedCategory ??
-              item['category'] ??
-              "Uncategorized", // Ensure category is stored
-        });
+    if (batchKey != null) {
+      var existingItem = inventoryBox.get(batchKey);
+      int currentQuantity =
+          int.tryParse(existingItem['quantity'].toString()) ?? 0;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Quantity added successfully (Offline).')),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Invalid quantity entered.')));
-      }
+      existingItem['item_name'] = itemName;
+      existingItem['serial_no'] = serialNo;
+      existingItem['quantity'] = currentQuantity + addQuantity;
+      existingItem['exp_date'] = expirationDateController.text;
+      existingItem['brand'] = brandController.text;
+      existingItem['category'] = selectedCategory ?? "Uncategorized";
+      existingItem['specification'] = specification;
+      existingItem['unit'] = unit;
+      existingItem['cost'] = cost;
+      existingItem['qr_code_image'] = qrCodeImage;
+
+      await inventoryBox.put(batchKey, existingItem);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Item not found in offline storage.')),
-      );
+      // Create a new batch entry with additional fields
+      await inventoryBox.add({
+        'qr_code_data': widget.qrCodeData,
+        'item_name': itemName,
+        'serial_no': serialNo,
+        'quantity': addQuantity,
+        'exp_date': expirationDateController.text,
+        'brand': brandController.text,
+        'category': selectedCategory ?? "Uncategorized",
+        'specification': specification,
+        'unit': unit,
+        'cost': cost,
+        'qr_code_image': qrCodeImage,
+      });
     }
+
+    // Save update to pending_updates with additional fields
+    pendingUpdatesBox.add({
+      'qr_code_data': widget.qrCodeData,
+      'item_name': itemName,
+      'serial_no': serialNo,
+      'quantity_added': addQuantity,
+      'exp_date': expirationDateController.text,
+      'brand': brandController.text,
+      'category': selectedCategory ?? "Uncategorized",
+      'specification': specification,
+      'unit': unit,
+      'cost': cost,
+      'qr_code_image': qrCodeImage,
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Quantity added successfully (Offline).')),
+    );
+    Navigator.pop(context, true);
   }
 
   Future<void> _showMonthYearPicker(

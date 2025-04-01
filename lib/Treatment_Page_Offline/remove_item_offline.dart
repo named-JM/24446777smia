@@ -1,39 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
-// Future<void> syncInventory() async {
-//   final box = await Hive.openBox('inventory');
-
-//   final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
-
-//   if (response.statusCode == 200) {
-//     List<dynamic> inventoryList = jsonDecode(response.body)['items'];
-
-//     await box.clear(); // Ensure the offline storage is fully updated
-
-//     for (var item in inventoryList) {
-//       // Debugging: Print the item and its qr_code_data
-//       print('Processing item: $item');
-//       final qrCodeData = item['qr_code_data'];
-
-//       if (qrCodeData != null && qrCodeData is String) {
-//         box.put(qrCodeData, {
-//           'item_name': item['item_name'],
-//           'quantity':
-//               int.tryParse(item['quantity'].toString()) ??
-//               0, // Ensure it's stored as an int
-//         });
-//       } else {
-//         print('Invalid qr_code_data: $qrCodeData');
-//       }
-//     }
-
-//     print("Inventory synced successfully!");
-//   } else {
-//     print("Failed to fetch inventory from server.");
-//   }
-// }
-
 class RemoveQuantityPageOffline extends StatefulWidget {
   final String qrCodeData;
 
@@ -50,75 +17,151 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
   @override
   void initState() {
     super.initState();
+    fetchBatchesOffline(); // Call the function to fetch batches
     // syncInventory(); // Sync inventory when the page initializes
-    printHiveData(); // Print Hive data for debugging
+    // printHiveData(); // Print Hive data for debugging
   }
 
-  void printHiveData() async {
-    print("Printing Hive data...");
+  // void printHiveData() async {
+  //   print("Printing Hive data...");
 
-    // Open the Hive box and print its contents
-    // This is just for debugging purposes
-    final box = await Hive.openBox('inventory');
-    print("Hive Inventory Data: ${box.toMap()}");
+  //   // Open the Hive box and print its contents
+  //   // This is just for debugging purposes
+  //   final box = await Hive.openBox('inventory');
+  //   print("Hive Inventory Data: ${box.toMap()}");
+  // }
+
+  List<Map<String, dynamic>> batches = [];
+  String? selectedExpDate;
+
+  Future<void> fetchBatchesOffline() async {
+    final inventoryBox = await Hive.openBox('inventory');
+
+    final inventoryMap = inventoryBox.toMap();
+    batches =
+        inventoryMap.values
+            .where((item) => item['qr_code_data'] == widget.qrCodeData)
+            .map(
+              (item) => {
+                'key': inventoryMap.keys.firstWhere(
+                  (key) => inventoryMap[key] == item,
+                ),
+                'serial_no': item['serial_no'], // Fetch serial_no
+                'qr_code_data': item['qr_code_data'],
+                'exp_date': item['exp_date'],
+                'brand': item['brand'], // Fetch brand
+                'category': item['category'], // Fetch category
+                'quantity': item['quantity'],
+              },
+            )
+            .toList();
+
+    print('Fetched Batches: $batches'); // Debugging
+
+    if (batches.isNotEmpty) {
+      setState(() {
+        selectedExpDate =
+            batches.firstWhere(
+              (batch) => batch['exp_date'] != null,
+            )['exp_date'];
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No batches found for this item.')),
+      );
+      Navigator.pop(context);
+    }
   }
 
   Future<void> removeQuantity() async {
-    final inventoryBox = await Hive.openBox('inventory');
-    final pendingUpdatesBox = await Hive.openBox('pending_updates');
-
-    Map<dynamic, dynamic> inventoryMap = inventoryBox.toMap();
-    var itemKey;
-    var item;
-    print("Scanned QR Code Data: ${widget.qrCodeData}");
-
-    // Search for the correct item by matching qr_code_data
-    for (var key in inventoryMap.keys) {
-      var currentItem = inventoryMap[key];
-      if (currentItem['qr_code_data'] == widget.qrCodeData) {
-        item = currentItem;
-        itemKey = key;
-        break;
-      }
+    if (selectedExpDate == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Please select a batch')));
+      return;
     }
 
-    if (item != null) {
-      int currentQuantity = int.tryParse(item['quantity'].toString()) ?? 0;
-      int removeQuantity = int.tryParse(quantityController.text) ?? 0;
+    final inventoryBox = await Hive.openBox('inventory');
+    final pendingRemovalsBox = await Hive.openBox('pending_removals');
 
-      if (removeQuantity > 0 && removeQuantity <= currentQuantity) {
-        item['quantity'] = currentQuantity - removeQuantity;
-        await inventoryBox.put(itemKey, item);
+    final batch = batches.firstWhere(
+      (batch) => batch['exp_date'] == selectedExpDate,
+    );
+    final batchKey = batch['key'];
+    final currentQuantity = batch['quantity'];
+    final removeQuantity = int.tryParse(quantityController.text) ?? 0;
 
-        pendingUpdatesBox.add({
-          'qr_code_data': widget.qrCodeData,
-          'quantity_removed': removeQuantity,
-        });
+    if (removeQuantity > 0 && removeQuantity <= currentQuantity) {
+      // Update inventory
+      final updatedBatch = inventoryBox.get(batchKey);
+      updatedBatch['quantity'] = currentQuantity - removeQuantity;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Quantity removed successfully (Offline).')),
-        );
-        Navigator.pop(context, true);
+      if (updatedBatch['quantity'] > 0) {
+        await inventoryBox.put(batchKey, updatedBatch);
       } else {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Invalid quantity')));
+        await inventoryBox.delete(batchKey); // Remove item if quantity is zero
       }
-    } else {
+
+      // Save to pending_removals
+      pendingRemovalsBox.add({
+        'serial_no': batch['serial_no'],
+        'qr_code_data': widget.qrCodeData,
+        'exp_date': selectedExpDate,
+        'quantity_removed': removeQuantity,
+        'brand': batch['brand'],
+        'category': batch['category'],
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Item not found in offline storage.')),
+        SnackBar(content: Text('Quantity removed successfully (Offline).')),
       );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Invalid quantity')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    print('Batches List: $batches');
+
     return Scaffold(
       appBar: AppBar(title: Text('Remove Quantity (Offline)')),
       body: Padding(
         padding: const EdgeInsets.all(8.0),
         child: Column(
           children: [
+            if (batches.isNotEmpty)
+              DropdownButton<String>(
+                value:
+                    batches.any((batch) => batch['exp_date'] == selectedExpDate)
+                        ? selectedExpDate
+                        : null, // Avoids selecting an invalid value
+                items:
+                    batches
+                        .map((batch) => batch['exp_date'])
+                        .toSet() // Remove duplicates
+                        .map(
+                          (expDate) => DropdownMenuItem<String>(
+                            value: expDate,
+                            child: Text(
+                              'Expiry: $expDate | Qty: ${batches.firstWhere((batch) => batch['exp_date'] == expDate)['quantity']}',
+                            ),
+                          ),
+                        )
+                        .toList(),
+                onChanged: (value) {
+                  setState(() {
+                    selectedExpDate = value;
+                  });
+                },
+                hint: Text('Select Expiration Date'),
+              )
+            else
+              Text('Loading batches...'),
+
             TextField(
               controller: quantityController,
               keyboardType: TextInputType.number,
@@ -126,16 +169,12 @@ class _RemoveQuantityPageOfflineState extends State<RemoveQuantityPageOffline> {
                 labelText: 'Enter Quantity to Remove',
               ),
             ),
+
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: removeQuantity,
-
               child: Text('Remove Quantity'),
             ),
-            // ElevatedButton(
-            //   onPressed: printHiveData,
-            //   child: Text('Print Hive Data'),
-            // ),
           ],
         ),
       ),
