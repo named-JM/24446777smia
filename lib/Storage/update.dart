@@ -11,8 +11,10 @@ class UpdateItemPage extends StatefulWidget {
   final String specification;
   final String unit;
   final String cost;
+  final String expDate;
   // final String mfgDate;
   final String qrCodeImage;
+  final bool fromQRScanner;
 
   UpdateItemPage({
     required this.serialNo, // Add Serial Number
@@ -21,8 +23,10 @@ class UpdateItemPage extends StatefulWidget {
     required this.specification,
     required this.unit,
     required this.cost,
+    required this.expDate,
     // required this.mfgDate,
     required this.qrCodeImage,
+    required this.fromQRScanner,
   });
 
   @override
@@ -84,7 +88,7 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
         final response = await http.post(
           Uri.parse('$BASE_URL/update_item.php'),
           body: jsonEncode({
-            'serial_no': widget.serialNo, // Include Serial Number
+            'serial_no': widget.serialNo,
             'qr_code_data': widget.qrCodeData,
             'quantity': int.parse(quantityController.text),
             'exp_date': expirationDateController.text,
@@ -170,11 +174,18 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       body: jsonEncode({'qr_code_data': widget.qrCodeData}),
       headers: {'Content-Type': 'application/json'},
     );
+    print("Fetching item details..."); // Debugging
+    print("From QR Scanner: ${widget.fromQRScanner}"); // Debugging
 
     if (response.statusCode == 200) {
       final result = jsonDecode(response.body);
       if (result['success']) {
         setState(() {
+          if (!widget.fromQRScanner) {
+            print("Exp Date Fetched: ${widget.expDate}"); // Debugging
+
+            expirationDateController.text = widget.expDate;
+          }
           brandController.text = result['brand'] ?? '';
 
           // Ensure category exists before assigning
@@ -198,7 +209,6 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
       );
     }
   }
-
   // Future<void> fetchItemDetails() async {
   //   final response = await http.post(
   //     Uri.parse('$BASE_URL/update_get_item.php'),

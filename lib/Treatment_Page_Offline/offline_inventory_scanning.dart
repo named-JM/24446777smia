@@ -44,7 +44,7 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
       if (matchedItem != null) {
         String itemName = matchedItem['item_name'] ?? 'Unknown Item';
         String serialNo = matchedItem['serial_no'] ?? 'N/A';
-
+        String expDate = matchedItem['exp_date'] ?? '';
         // Show a dialog to choose between Add or Remove
         showDialog(
           context: context,
@@ -65,6 +65,7 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
                               itemName: itemName,
                               qrCodeData: scannedQR,
                               serialNo: serialNo,
+                              expDate: expDate,
                               fromQRScanner:
                                   true, // Indicate navigation from QR Scanner
                             ),
@@ -203,6 +204,7 @@ class _OfflineScanningPageState extends State<OfflineScanningPage> {
                                                 qrCodeData, // ✅ Pass qr_code_data
                                             serialNo:
                                                 serialNo, // ✅ Pass serial_no
+                                            expDate: expDate, // ✅ Pass exp_date
                                             fromQRScanner:
                                                 false, // Indicate navigation from QR Scanner
                                           ),

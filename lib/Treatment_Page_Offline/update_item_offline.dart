@@ -5,12 +5,14 @@ class UpdateItemOffline extends StatefulWidget {
   final String itemName;
   final String qrCodeData;
   final String serialNo;
+  final String expDate;
   final bool fromQRScanner; // New flag to indicate source
 
   UpdateItemOffline({
     required this.itemName,
     required this.qrCodeData,
     required this.serialNo,
+    required this.expDate,
     required this.fromQRScanner, // Initialize the flag
   });
 
@@ -65,7 +67,7 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
       setState(() {
         if (!widget.fromQRScanner) {
           // Fetch expiration date only if not from QR Scanner
-          expirationDateController.text = item['exp_date'] ?? '';
+          expirationDateController.text = widget.expDate;
         }
         brandController.text = item['brand'] ?? '';
         selectedCategory = item['category'] ?? '';
