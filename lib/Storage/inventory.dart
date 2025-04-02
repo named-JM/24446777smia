@@ -5,7 +5,9 @@ import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Storage/qr.dart';
 import 'package:qrqragain/Storage/update.dart';
 import 'package:qrqragain/Treatment_Area/remove_item.dart';
@@ -27,7 +29,7 @@ class _InventoryPageState extends State<InventoryPage> {
   List<dynamic> categories = [];
   String selectedCategory = 'All Categories';
   bool isLoading = true; // Add isLoading variable
-
+  final TextEditingController searchController = TextEditingController();
   //load when the page opens
   @override
   void initState() {
@@ -239,97 +241,143 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
-  /// latest
-  // Future<void> syncOnlineToOffline() async {
-  //   try {
-  //     final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
-
-  //     if (response.statusCode == 200) {
-  //       final List<dynamic> onlineItems = jsonDecode(response.body)['items'];
-  //       final box = await Hive.openBox('inventory');
-
-  //       for (var item in onlineItems) {
-  //         String qrCode = item['qr_code_data'];
-  //         int existingIndex = box.values.toList().indexWhere(
-  //           (existingItem) => existingItem['qr_code_data'] == qrCode,
-  //         );
-
-  //         if (existingIndex != -1) {
-  //           box.putAt(existingIndex, item);
-  //         } else {
-  //           box.add(item);
-  //         }
-  //       }
-
-  //       // **Force UI Refresh**
-  //       setState(() {});
-
-  //       print("Sync successful: MySQL data updated in Hive!");
-  //     } else {
-  //       print("Failed to fetch online data: ${response.statusCode}");
-  //     }
-  //   } catch (e) {
-  //     print("Error syncing data: $e");
-  //   }
-  // }
-
   Future<void> fetchCategories() async {
-    final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
-    if (response.statusCode == 200) {
-      List<dynamic> fetchedCategories = jsonDecode(response.body)["categories"];
+    try {
+      final response = await http.get(
+        Uri.parse('$BASE_URL/get_categories.php'),
+      );
 
-      setState(() {
-        // Convert to List<Map<String, String>>
-        categories = [
-          {"name": "All Categories"}, // Ensure only one "All Categories"
-        ];
+      if (response.statusCode == 200) {
+        List<dynamic> fetchedCategories =
+            jsonDecode(response.body)["categories"];
 
-        categories.addAll(
-          fetchedCategories.map(
-            (category) => {"name": category["name"].toString()},
-          ),
-        );
+        setState(() {
+          // Convert to List<Map<String, String>>
+          categories = [
+            {"name": "All Categories"}, // Ensure only one "All Categories"
+          ];
 
-        selectedCategory = "All Categories"; // ✅ Always reset after fetching
-      });
-    } else {
-      print("Error fetching categories: ${response.statusCode}");
+          categories.addAll(
+            fetchedCategories.map(
+              (category) => {"name": category["name"].toString()},
+            ),
+          );
+
+          selectedCategory = "All Categories"; // ✅ Always reset after fetching
+        });
+      } else {
+        print("Error fetching categories: ${response.statusCode}");
+      }
+    } catch (e) {
+      print("Error fetching categories: $e");
+
+      // Show a dialog to prompt the user to switch to offline mode
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Network Error"),
+            content: Text(
+              "Failed to fetch categories. Please check your internet connection or switch to offline mode.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                },
+                child: Text("Retry"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Navigate to offline mode
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => OfflineHomePage()),
+                  );
+                },
+                child: Text("Go Offline"),
+              ),
+            ],
+          );
+        },
+      );
     }
   }
 
   Future<void> fetchItems() async {
-    final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
-    print("Raw Response: ${response.body}"); // Debugging
+    try {
+      final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
+      print("Raw Response: ${response.body}"); // Debugging
 
-    if (response.statusCode == 200) {
-      try {
-        final jsonResponse = jsonDecode(response.body);
-        print("Parsed JSON: $jsonResponse"); // Debugging
+      if (response.statusCode == 200) {
+        try {
+          final jsonResponse = jsonDecode(response.body);
+          print("Parsed JSON: $jsonResponse"); // Debugging
 
-        if (jsonResponse is Map<String, dynamic> &&
-            jsonResponse.containsKey('items')) {
-          final itemsData = jsonResponse['items'];
+          if (jsonResponse is Map<String, dynamic> &&
+              jsonResponse.containsKey('items')) {
+            final itemsData = jsonResponse['items'];
 
-          if (itemsData is List) {
-            if (mounted) {
-              setState(() {
-                items = itemsData;
-                filteredItems = items;
-                isLoading = false; // Set loading to false
-              });
+            if (itemsData is List) {
+              if (mounted) {
+                setState(() {
+                  items = itemsData;
+                  filteredItems = items;
+                  searchQuery = ''; // Reset search query
+                  selectedCategory =
+                      'All Categories'; // Reset category dropdown
+                  searchController.clear(); // Clear the search bar input
+                  isLoading = false; // Set loading to false
+                });
+              }
+            } else {
+              print("Error: 'items' is not a list.");
             }
           } else {
-            print("Error: 'items' is not a list.");
+            print("Error: 'items' key not found in the response.");
           }
-        } else {
-          print("Error: 'items' key not found in the response.");
+        } catch (e) {
+          print("Error parsing JSON: $e");
         }
-      } catch (e) {
-        print("Error parsing JSON: $e");
+      } else {
+        print(
+          "Error: Failed to fetch items. Status code: ${response.statusCode}",
+        );
       }
-    } else {
-      print(
-        "Error: Failed to fetch items. Status code: ${response.statusCode}",
+    } catch (e) {
+      print("Error fetching items: $e");
+
+      // Show a dialog to prompt the user to switch to offline mode
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Network Error"),
+            content: Text(
+              "Failed to connect to the server. Please check your internet connection or switch to offline mode.",
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                },
+                child: Text("Retry"),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context); // Close the dialog
+                  // Navigate to offline mode
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => OfflineHomePage()),
+                  );
+                },
+                child: Text("Go Offline"),
+              ),
+            ],
+          );
+        },
       );
     }
   }
@@ -400,8 +448,11 @@ class _InventoryPageState extends State<InventoryPage> {
                               specification: item['specification'],
                               unit: item['unit'],
                               cost: item['cost'].toString(),
+                              expDate: item['exp_date'] ?? '',
                               //  mfgDate: item['mfg_date'],
                               qrCodeImage: item['qr_code_image'],
+                              fromQRScanner:
+                                  true, // Indicate navigation from QR Scanner
                             ),
                       ),
                     ).then((_) {
@@ -451,12 +502,12 @@ class _InventoryPageState extends State<InventoryPage> {
       return;
     }
 
-    // **1️⃣ Request Storage Permission Properly**
+    // Request Storage Permission
     PermissionStatus status = await Permission.manageExternalStorage.request();
 
     if (status.isGranted) {
       try {
-        // **2️⃣ Get the "Downloads" directory**
+        // Get the "Downloads" directory
         Directory downloadsDirectory = Directory(
           '/storage/emulated/0/Download',
         );
@@ -465,7 +516,7 @@ class _InventoryPageState extends State<InventoryPage> {
           downloadsDirectory.createSync(recursive: true);
         }
 
-        // **3️⃣ Save the file in the Downloads folder**
+        // Save the file in the Downloads folder
         String filePath = "${downloadsDirectory.path}/inventory_data.csv";
         File file = File(filePath);
         await file.writeAsString(
@@ -500,21 +551,25 @@ class _InventoryPageState extends State<InventoryPage> {
         );
 
         print("CSV File saved at: $filePath");
+
+        // Open the file
+        final result = await OpenFile.open(filePath);
+        print("OpenFile result: ${result.message}");
       } catch (e) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("❌ Error saving CSV: $e")));
-        print("Error saving CSV: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("❌ Error saving or opening CSV: $e")),
+        );
+        print("Error saving or opening CSV: $e");
       }
     } else if (status.isPermanentlyDenied) {
-      // **4️⃣ Show Dialog Only if User Permanently Denied**
+      // Show Dialog Only if User Permanently Denied
       showDialog(
         context: context,
         builder:
             (context) => AlertDialog(
               title: Text("Storage Permission Required"),
               content: Text(
-                "Please allow storage permission in settings to save CSV files.",
+                "Please allow storage permission in settings to save and open CSV files.",
               ),
               actions: [
                 TextButton(
@@ -532,9 +587,13 @@ class _InventoryPageState extends State<InventoryPage> {
             ),
       );
     } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("❌ Storage permission denied!")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "❌ Storage permission denied! Please allow it in settings.",
+          ),
+        ),
+      );
     }
   }
 
@@ -566,6 +625,7 @@ class _InventoryPageState extends State<InventoryPage> {
                 child: Column(
                   children: [
                     TextField(
+                      controller: searchController, // Bind the controller
                       decoration: InputDecoration(
                         labelText: 'Search',
                         border: OutlineInputBorder(),
@@ -663,92 +723,114 @@ class _InventoryPageState extends State<InventoryPage> {
                           itemBuilder: (context, index) {
                             final item = filteredItems[index];
 
-                            return Card(
-                              color: Colors.white,
-                              child: ListTile(
-                                title: Text(
-                                  item['item_name'],
-                                  style: TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) => UpdateItemPage(
+                                          serialNo: item['serial_no'],
+                                          qrCodeData: item['qr_code_data'],
+                                          itemName: item['item_name'],
+                                          specification: item['specification'],
+                                          unit: item['unit'],
+                                          cost: item['cost'].toString(),
+                                          qrCodeImage: item['qr_code_image'],
+                                          expDate: item['exp_date'] ?? '',
+                                          fromQRScanner: false,
+                                        ),
                                   ),
+                                ).then((_) {
+                                  syncOfflineUpdates();
+                                  syncOnlineToOffline();
+                                });
+                              },
+                              child: Container(
+                                padding: EdgeInsets.all(12),
+                                margin: const EdgeInsets.symmetric(
+                                  vertical: 8,
+                                  horizontal: 12,
                                 ),
-                                subtitle: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Brand: ${item['brand']} \n'
-                                      'Category: ${item['category']} \n'
-                                      'Specification: ${item['specification']} \n'
-                                      'Unit: ${item['unit']} \n'
-                                      'Cost: ${item['cost']} \n'
-                                      'Quantity: ${item['quantity']} \n'
-                                      'Exp Date: ${item['exp_date'] ?? 'N/A'}',
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black12,
+                                      blurRadius: 4,
+                                      spreadRadius: 1,
                                     ),
-                                    SizedBox(height: 5),
-                                    _buildStatusChips(
-                                      item['statuses'],
-                                    ), // Display status badges
                                   ],
                                 ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
                                   children: [
-                                    // Edit Button
-                                    IconButton(
-                                      icon: Icon(
-                                        Icons.edit,
-                                        color: Colors.blue,
-                                      ),
-                                      tooltip: "Edit Item",
-                                      onPressed: () {
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder:
-                                                (context) => UpdateItemPage(
-                                                  serialNo: item['serial_no'],
-                                                  qrCodeData:
-                                                      item['qr_code_data'],
-                                                  itemName: item['item_name'],
-                                                  specification:
-                                                      item['specification'],
-                                                  unit: item['unit'],
-                                                  cost: item['cost'].toString(),
-                                                  //   mfgDate: item['mfg_date'],
-                                                  qrCodeImage:
-                                                      item['qr_code_image'],
-                                                ),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item['item_name'],
+                                            style: TextStyle(
+                                              fontSize: 25,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
-                                        ).then((_) {
-                                          // Refresh data after returning from the update page
-                                          syncOfflineUpdates();
-                                          syncOnlineToOffline();
-                                        });
-                                      },
+                                          SizedBox(height: 8),
+                                          Text(
+                                            'Brand: ${item['brand']} \n'
+                                            'Category: ${item['category']} \n'
+                                            'Specification: ${item['specification']} \n'
+                                            'Unit: ${item['unit']} \n'
+                                            'Cost: ${item['cost']} \n'
+                                            'Quantity: ${item['quantity']} \n'
+                                            'Exp Date: ${item['exp_date'] ?? 'N/A'}',
+                                          ),
+                                          SizedBox(height: 8),
+                                          _buildStatusChips(item['statuses']),
+                                        ],
+                                      ),
                                     ),
-                                    // QR Code Image or Icon
-                                    item['qr_code_image'] != null &&
-                                            item['qr_code_image'].startsWith(
-                                              'http',
-                                            )
-                                        ? Image.network(
-                                          item['qr_code_image'],
-                                          width: 50,
-                                          height: 50,
-                                          errorBuilder:
-                                              (context, error, stackTrace) =>
-                                                  Icon(
-                                                    Icons.qr_code,
-                                                    size: 50,
-                                                    color: Colors.grey,
-                                                  ),
-                                        )
-                                        : Icon(
-                                          Icons.qr_code,
-                                          size: 50,
-                                          color: Colors.grey,
+                                    if (item['qr_code_image'] != null &&
+                                        item['qr_code_image'].startsWith(
+                                          'http',
+                                        ))
+                                      Container(
+                                        width: 150,
+                                        height: 150,
+                                        // decoration: BoxDecoration(
+                                        //   borderRadius: BorderRadius.circular(
+                                        //     10,
+                                        //   ),
+                                        //   border: Border.all(
+                                        //     color: const Color.fromARGB(
+                                        //       255,
+                                        //       209,
+                                        //       209,
+                                        //       209,
+                                        //     ),
+                                        //     width: 2,
+                                        //   ),
+                                        // ),
+                                        child: ClipRRect(
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                          child: Image.network(
+                                            item['qr_code_image'],
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Icon(
+                                                      Icons.qr_code,
+                                                      size: 50,
+                                                      color: Colors.grey,
+                                                    ),
+                                          ),
                                         ),
+                                      ),
                                   ],
                                 ),
                               ),
