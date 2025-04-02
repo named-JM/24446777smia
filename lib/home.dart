@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
@@ -22,28 +21,62 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _timer;
   List<String> categories = [];
   String? selectedCategory;
+  bool hasNewNotif = false;
+  List<dynamic> previousLowStockItems = [];
+  void _startAutoCheck() {
+    _timer = Timer.periodic(Duration(seconds: 5), (timer) {
+      print("Auto-checking for low stock...");
+      checkLowStock();
+    });
+  }
 
   @override
   void initState() {
     super.initState();
+    _startAutoCheck(); // Start auto-refresh
 
     checkLowStock(); // Initial check for low stock
-
+    print("New Notif Status: $hasNewNotif");
     // Ensure first API call after UI build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       checkLowStock();
     });
 
-    _startAutoCheck(); // Start auto-refresh
     syncOfflineUpdates();
     syncOfflineRemovals(); // Sync offline removals
     fetchCategories(); // Fetch categories from the server
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Trigger low stock check when navigating back to this page
+    checkLowStock();
+  }
+
+  @override
   void dispose() {
     _timer?.cancel(); // Stop timer when the widget is disposed
     super.dispose();
+  }
+
+  bool _hasNewNotifications(
+    List<dynamic> currentItems,
+    List<dynamic> previousItems,
+  ) {
+    // Convert both lists to sets of unique batch identifiers
+    final currentSet =
+        currentItems.map((item) {
+          return "${item['item_name']}_${item['exp_date']}_${item['statuses']}";
+        }).toSet();
+
+    final previousSet =
+        previousItems.map((item) {
+          return "${item['item_name']}_${item['exp_date']}_${item['statuses']}";
+        }).toSet();
+
+    // Check if there are any new batches in the current set that are not in the previous set
+    return !currentSet.difference(previousSet).isEmpty;
   }
 
   Future<void> fetchCategories() async {
@@ -110,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       List<Map<String, dynamic>> updates = batchedUpdates.values.toList();
-      print("Final updates being sent: ${jsonEncode({'updates': updates})}");
+      //print("Final updates being sent: ${jsonEncode({'updates': updates})}");
 
       try {
         final response = await http.post(
@@ -223,29 +256,16 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _startAutoCheck() {
-    _timer = Timer.periodic(Duration(seconds: 10), (timer) {
-      checkLowStock();
-    });
-  }
-
   Future<void> checkLowStock() async {
-    var connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('No internet connection.')));
-      return;
-    }
-
+    print("Checking for low stock notifications...");
     try {
       final response = await http.get(Uri.parse("$BASE_URL/notif.php"));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        // Debugging: Print the API response
-        //  print("API Response: ${response.body}");
+        // Log the API response for debugging
+        print("API Response: $data");
 
         // Filter out items where status is "normal"
         List<dynamic> newItems =
@@ -256,13 +276,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 )
                 .toList();
 
+        print("Filtered Low Stock Items: $newItems");
+
         if (mounted) {
           setState(() {
             lowStockItems = newItems;
-            hasLowStock =
-                newItems.isNotEmpty; // Update hasLowStock based on newItems
+            hasLowStock = newItems.isNotEmpty;
+
+            // Compare the new list with the previous list to detect changes
+            bool hasNewItems = _hasNewNotifications(
+              newItems,
+              previousLowStockItems,
+            );
+
+            if (hasNewItems) {
+              print("New notifications detected!");
+              hasNewNotif = true; // Set the red dot flag
+            } else {
+              print("No new notifications.");
+            }
+
+            // Update the previous list for the next comparison
+            previousLowStockItems = List.from(newItems);
           });
         }
+        print("Low Stock Items: $lowStockItems");
+        print("Has New Notifications: $hasNewNotif");
       } else {
         print("Failed to fetch data: ${response.statusCode}");
       }
@@ -272,6 +311,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void showNotificationSheet() {
+    setState(() {
+      hasNewNotif = false; // Clear the red dot when user views notifications
+    });
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -328,6 +371,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    hasNewNotif = false; // Clear the red dot
+                    previousLowStockItems = List.from(
+                      lowStockItems,
+                    ); // Update previous list
+                  });
+                  Navigator.pop(context); // Close the notification sheet
+                },
+                child: Text("Mark as Read"),
+              ),
             ],
           ),
         );
@@ -422,11 +477,11 @@ class _HomeScreenState extends State<HomeScreen> {
             IconButton(
               icon: Stack(
                 children: [
-                  Icon(Icons.notifications, size: 30),
-                  if (hasLowStock)
+                  Icon(Icons.notifications, size: 30), // Notification Icon
+                  if (hasNewNotif) // Show red dot only when there's a new notification
                     Positioned(
-                      right: 3,
-                      top: 3,
+                      right: 0,
+                      top: 0,
                       child: Container(
                         width: 10,
                         height: 10,
@@ -438,9 +493,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                 ],
               ),
-              onPressed: () async {
-                showNotificationSheet();
-              },
+              onPressed: showNotificationSheet,
             ),
           ],
         ),
