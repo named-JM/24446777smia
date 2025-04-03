@@ -4,11 +4,13 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
 import 'package:qrqragain/Storage/inventory.dart';
 import 'package:qrqragain/Treatment_Area/treatment_page.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
+import 'package:qrqragain/user_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -33,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    hasNewNotif = false; // Reset the notification flag on initialization
     _startAutoCheck(); // Start auto-refresh
 
     checkLowStock(); // Initial check for low stock
@@ -294,6 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
               hasNewNotif = true; // Set the red dot flag
             } else {
               print("No new notifications.");
+              hasNewNotif = false; // Ensure the flag is reset
             }
 
             // Update the previous list for the next comparison
@@ -311,9 +315,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void showNotificationSheet() {
-    setState(() {
-      hasNewNotif = false; // Clear the red dot when user views notifications
-    });
+    // setState(() {
+    //   hasNewNotif = false; // Clear the red dot when user views notifications
+    // });
 
     showModalBottomSheet(
       context: context,
@@ -465,6 +469,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    print("USER ID: ${userProvider.userID ?? "Not logged in"}");
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -627,6 +634,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             TextButton(
               onPressed: () {
+                setState(() {
+                  hasNewNotif = false; // Reset the notification flag
+                });
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => LoginScreen()),
