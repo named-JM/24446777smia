@@ -304,121 +304,123 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        // title: const Text('Login'),
         centerTitle: true,
         automaticallyImplyLeading: false,
       ),
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      body: Center(
-        child: Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisSize:
-                MainAxisSize
-                    .min, // Ensures the column takes only the necessary space
-            mainAxisAlignment:
-                MainAxisAlignment.center, // Centers items vertically
-            crossAxisAlignment:
-                CrossAxisAlignment.center, // Centers items horizontally
-            children: <Widget>[
-              TextField(
-                controller: emailController,
-                decoration: InputDecoration(
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.lightGreen),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.lightGreen),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  labelText: 'Email',
-                  labelStyle: TextStyle(color: Colors.black),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(18),
+      body: Column(
+        children: [
+          // Account Icon and "USER LOGIN" text at the top
+          Padding(
+            padding: const EdgeInsets.only(
+              top: 50.0,
+            ), // Add spacing from the top
+            child: Column(
+              children: [
+                Icon(
+                  Icons.account_circle,
+                  size: 100, // Adjust the size of the icon
+                  color: Colors.lightGreen, // Icon color
+                ),
+                SizedBox(height: 10), // Add spacing between the icon and text
+                Text(
+                  "USER LOGIN",
+                  style: TextStyle(
+                    fontSize: 24, // Font size for the text
+                    fontWeight: FontWeight.bold, // Bold text
+                    color: Colors.black, // Text color
                   ),
                 ),
-              ),
-              SizedBox(height: 20),
-              TextField(
-                controller: passwordController,
-                decoration: InputDecoration(
-                  enabledBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.lightGreen),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.lightGreen),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  labelText: 'Password',
-                  labelStyle: TextStyle(color: Colors.black),
-                  filled: true,
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide.none,
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                ),
-                obscureText: true,
-              ),
-              SizedBox(height: 20),
-              Container(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => loginUser(context),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.lightGreen,
-                    padding: EdgeInsets.symmetric(vertical: 16.0),
-                    shape: RoundedRectangleBorder(
+              ],
+            ),
+          ),
+
+          // Centered Text Fields and Buttons
+          Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: <Widget>[
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.lightGreen),
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    textStyle: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.lightGreen),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    labelText: 'Email',
+                    labelStyle: TextStyle(color: Colors.black),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
-                  child: const Text('Login'),
                 ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => Registration()),
-                  );
-                },
-                child: const Text('No Account? Register Here'),
-              ),
-              // Text("Offline currently working...."),
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.pushReplacement(
-              //       context,
-              //       MaterialPageRoute(
-              //         builder: (context) => OfflineScanningPage(),
-              //       ),
-              //     );
-              //   },
-              //   child: const Text('Offline Mode'),
-              // ),
-              // //this will go through to display the hive data
-              // TextButton(
-              //   onPressed: () {
-              //     Navigator.pushReplacement(
-              //       context,
-              //       MaterialPageRoute(builder: (context) => HiveDisplay()),
-              //     );
-              //   },
-              //   child: const Text('Offline Home Page'),
-              // ),
-            ],
+                SizedBox(height: 20),
+                TextField(
+                  controller: passwordController,
+                  decoration: InputDecoration(
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.lightGreen),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderSide: BorderSide(color: Colors.lightGreen),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    labelText: 'Password',
+                    labelStyle: TextStyle(color: Colors.black),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderSide: BorderSide.none,
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                  obscureText: true,
+                ),
+                SizedBox(height: 20),
+                Container(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => loginUser(context),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.lightGreen,
+                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      textStyle: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    child: const Text('Login'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (context) => Registration()),
+                    );
+                  },
+                  child: const Text('No Account? Register Here'),
+                ),
+              ],
+            ),
           ),
-        ),
+          Spacer(), // Add space below the text fields and buttons
+        ],
       ),
     );
   }
