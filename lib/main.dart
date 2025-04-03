@@ -1,8 +1,12 @@
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
 import 'package:qrqragain/offline_page.dart';
 import 'package:qrqragain/splash_page.dart';
+
+import 'user_provider.dart'; // Import your UserProvider
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,7 +19,16 @@ void main() async {
     print(stacktrace);
   }
 
-  runApp(MyApp());
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => UserProvider())],
+      child: MyApp(),
+    ),
+    // DevicePreview(
+    //   enabled: false, // Enable device preview
+    //   builder: (context) => MyApp(),
+    // ),
+  );
 }
 
 class MyApp extends StatefulWidget {
@@ -65,6 +78,10 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      useInheritedMediaQuery: true, // Required for DevicePreview
+      debugShowCheckedModeBanner: true,
+      locale: DevicePreview.locale(context), // Use DevicePreview's locale
+      builder: DevicePreview.appBuilder, // Wrap app with DevicePreview
       home: Builder(
         builder: (context) {
           return isOnline ? SplashScreen() : OfflineHomePage();
@@ -92,17 +109,17 @@ class _MyAppState extends State<MyApp> {
 //   runApp(MaterialApp(home: SplashScreen()));
 //   // runApp(
 
-//   //   DevicePreview(
-//   //     enabled: true, // Enable device preview
-//   //     builder:
-//   //         (context) => MaterialApp(
-//   //           useInheritedMediaQuery: true,
-//   //           debugShowCheckedModeBanner: false,
-//   //           locale: DevicePreview.locale(context),
-//   //           builder: DevicePreview.appBuilder,
-//   //           home: SplashScreen(),
-//   //         ),
-//   //   ),
+  //   DevicePreview(
+  //     enabled: true, // Enable device preview
+  //     builder:
+  //         (context) => MaterialApp(
+  //           useInheritedMediaQuery: true,
+  //           debugShowCheckedModeBanner: false,
+  //           locale: DevicePreview.locale(context),
+  //           builder: DevicePreview.appBuilder,
+  //           home: SplashScreen(),
+  //         ),
+  //   ),
 //   // );
 // }
 

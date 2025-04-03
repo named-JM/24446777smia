@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:qrqragain/constants.dart';
+import 'package:qrqragain/user_provider.dart';
 
 class RemoveQuantityPage extends StatefulWidget {
   final String qrCodeData;
@@ -55,12 +57,24 @@ class _RemoveQuantityPageState extends State<RemoveQuantityPage> {
       return;
     }
 
+    //Get userid from userprovider
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    final userID = userProvider.userID;
+    if (userID == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('User ID not found')));
+      return;
+    }
+    print("User ID: $userID");
+
     final response = await http.post(
       Uri.parse('$BASE_URL/remove_item.php'),
       body: jsonEncode({
         'qr_code_data': widget.qrCodeData,
         'exp_date': selectedExpDate, // Send the selected expiry date
         'quantity': int.parse(quantityController.text),
+        'user_id': userID,
       }),
       headers: {'Content-Type': 'application/json'},
     );

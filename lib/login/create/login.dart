@@ -5,11 +5,13 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:provider/provider.dart';
 import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Treatment_Page_Offline/offline_inventory_scanning.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/home.dart';
 import 'package:qrqragain/login/create/register.dart';
+import 'package:qrqragain/user_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -231,8 +233,19 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && response.body.isNotEmpty) {
         final data = jsonDecode(response.body);
-
+        print("Server Response: ${response.body}");
         if (data["status"] == "success") {
+          final userID =
+              data["u_id"].toString(); // Get userID from the server response
+          print("User ID from server: $userID"); // Debugging userID
+
+          //set userid in user provider
+          final userProvider = Provider.of<UserProvider>(
+            context,
+            listen: false,
+          );
+          userProvider.setUserID(userID); // Set userID in the provider
+
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('email', email);
           await prefs.setString('password', password);
@@ -253,6 +266,7 @@ class _LoginScreenState extends State<LoginScreen> {
         showErrorMessage("Server error. Please try again later.");
       }
     } catch (e) {
+      print("Login Error: $e"); // Debugging
       showErrorMessage("An error occurred. Please try again.");
     }
   }

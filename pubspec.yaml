@@ -55,6 +55,7 @@ dependencies:
   fl_chart: ^0.64.0
   # open_settings: ^2.0.2
   collection: ^1.17.0
+  provider: ^6.0.5
 
 
 
