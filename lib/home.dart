@@ -10,6 +10,7 @@ import 'package:qrqragain/Storage/inventory.dart';
 import 'package:qrqragain/Treatment_Area/treatment_page.dart';
 import 'package:qrqragain/constants.dart';
 import 'package:qrqragain/login/create/login.dart';
+import 'package:qrqragain/user_manual.dart';
 import 'package:qrqragain/user_provider.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -300,12 +301,14 @@ class _HomeScreenState extends State<HomeScreen> {
               hasNewNotif = false; // Ensure the flag is reset
             }
 
+            // Debugging
+            print("Previous Low Stock Items: $previousLowStockItems");
+            print("Current Low Stock Items: $lowStockItems");
+
             // Update the previous list for the next comparison
-            previousLowStockItems = List.from(newItems);
+            // previousLowStockItems = List.from(newItems);
           });
         }
-        print("Low Stock Items: $lowStockItems");
-        print("Has New Notifications: $hasNewNotif");
       } else {
         print("Failed to fetch data: ${response.statusCode}");
       }
@@ -314,11 +317,28 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void showNotificationSheet() {
-    // setState(() {
-    //   hasNewNotif = false; // Clear the red dot when user views notifications
-    // });
+  bool _isNewItem(Map<String, dynamic> item, String status) {
+    final currentItemKey = "${item['item_name']}_${item['exp_date']}_$status";
 
+    final previousKeys =
+        previousLowStockItems.expand((prevItem) {
+          return prevItem['statuses'].map((prevStatus) {
+            return "${prevItem['item_name']}_${prevItem['exp_date']}_$prevStatus";
+          });
+        }).toSet();
+
+    final isNew = !previousKeys.contains(currentItemKey);
+
+    // Debugging
+    print("Checking if item is new:");
+    print("Current Item Key: $currentItemKey");
+    print("Previous Keys: $previousKeys");
+    print("Is New: $isNew");
+
+    return isNew;
+  }
+
+  void showNotificationSheet() {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -327,6 +347,19 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
+        // Sort the lowStockItems list so new notifications come first
+        final sortedItems = List.from(lowStockItems);
+        sortedItems.sort((a, b) {
+          // Check if items are new
+          final isANew = a['statuses'].any((status) => _isNewItem(a, status));
+          final isBNew = b['statuses'].any((status) => _isNewItem(b, status));
+
+          // New items come first
+          if (isANew && !isBNew) return -1;
+          if (!isANew && isBNew) return 1;
+          return 0; // Keep the original order for items with the same status
+        });
+
         return Container(
           height: MediaQuery.of(context).size.height * 0.4,
           padding: EdgeInsets.all(16.0),
@@ -341,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: ListView(
                     children:
-                        lowStockItems.expand((item) {
+                        sortedItems.expand((item) {
                           List<Widget> notifications = [];
 
                           for (var status in item['statuses']) {
@@ -351,6 +384,10 @@ class _HomeScreenState extends State<HomeScreen> {
                                 quantity: item['quantity'],
                                 expiry: item['exp_date'],
                                 status: status,
+                                isNew: _isNewItem(
+                                  item,
+                                  status,
+                                ), // Pass the specific isNew value
                               ),
                             );
                           }
@@ -400,6 +437,7 @@ class _HomeScreenState extends State<HomeScreen> {
     required int quantity,
     required String? expiry,
     required String status,
+    required bool isNew, // Add a parameter to indicate if the item is new
   }) {
     IconData icon;
     Color iconColor;
@@ -435,8 +473,11 @@ class _HomeScreenState extends State<HomeScreen> {
         return SizedBox(); // Ignore "normal" status
     }
 
+    // Set background color based on whether the item is new
+    final backgroundColor = isNew ? Colors.yellow[100] : Colors.white;
+
     return Card(
-      color: Colors.white,
+      color: backgroundColor, // Set the background color dynamically
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
@@ -614,6 +655,18 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => HelpPage()),
+          );
+        },
+        backgroundColor: Colors.lightBlue,
+        child: Icon(Icons.help, color: Colors.white, size: 35),
+        tooltip: "Help",
+        shape: CircleBorder(),
       ),
     );
   }
