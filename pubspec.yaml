@@ -56,6 +56,7 @@ dependencies:
   # open_settings: ^2.0.2
   collection: ^1.17.0
   provider: ^6.0.5
+  intl: ^0.18.0
 
 
 

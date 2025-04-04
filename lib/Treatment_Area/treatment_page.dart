@@ -4,6 +4,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:qrqragain/constants.dart';
 
 class TreatmentPage extends StatefulWidget {
@@ -16,11 +17,13 @@ class _TreatmentPageState extends State<TreatmentPage> {
   String selectedCategory = 'All'; // Default category
   List<String> categories = ['All']; // List of categories
   bool isLoading = true; // Add a loading state
+  List<dynamic> removalLogs = [];
 
   @override
   void initState() {
     super.initState();
     loadData(); // Load data when the page initializes
+    fetchRemovalLogs(); // Load logs
   }
 
   Future<void> loadData() async {
@@ -49,6 +52,26 @@ class _TreatmentPageState extends State<TreatmentPage> {
       }
     } catch (e) {
       print("No internet connection");
+    }
+  }
+
+  Future<void> fetchRemovalLogs() async {
+    try {
+      final response = await http.get(
+        Uri.parse('$BASE_URL/get_removal_logs.php'),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          removalLogs = jsonDecode(response.body)['logs'];
+        });
+      } else {
+        print(
+          "Failed to load removal logs. Status Code: ${response.statusCode}",
+        );
+      }
+    } catch (e) {
+      print("Error fetching removal logs: $e");
     }
   }
 
@@ -101,6 +124,82 @@ class _TreatmentPageState extends State<TreatmentPage> {
       }
     } catch (e) {
       print("Error fetching medicines: $e");
+    }
+  }
+
+  void _confirmDelete(
+    BuildContext context,
+    Map<String, dynamic> medicine,
+    int index,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Delete Item"),
+          content: Text(
+            "Are you sure you want to delete '${medicine['item_name']}'?",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+              },
+              child: Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Close the dialog
+                _deleteMedicine(medicine, index);
+              },
+              child: Text("Delete", style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteMedicine(Map<String, dynamic> medicine, int index) async {
+    try {
+      final response = await http.post(
+        Uri.parse(
+          '$BASE_URL/delete_item.php',
+        ), // Replace with your delete API endpoint
+        body: jsonEncode({'qr_code_data': medicine['qr_code_data']}),
+        headers: {'Content-Type': 'application/json'},
+      );
+
+      if (response.statusCode == 200) {
+        final result = jsonDecode(response.body);
+        if (result['status'] == 'success') {
+          setState(() {
+            //  filteredItems.removeAt(index); // Remove the item from the list
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "Item '${medicine['item_name']}' deleted successfully!",
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Failed to delete item: ${result['message']}"),
+            ),
+          );
+        }
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to delete item. Server error.")),
+        );
+      }
+    } catch (e) {
+      print("Error deleting item: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("An error occurred. Please try again.")),
+      );
     }
   }
 
@@ -241,13 +340,52 @@ class _TreatmentPageState extends State<TreatmentPage> {
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Row(
-                            children: [
-                              Text('Remaining: ${medicine['quantity']}'),
-                            ],
-                          ),
+                          Text('Remaining: ${medicine['quantity']}'),
                           Text('Category: ${medicine['category']}'),
+                          if (removalLogs.isNotEmpty)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children:
+                                  removalLogs
+                                      .where(
+                                        (log) =>
+                                            log['qr_code_data'] ==
+                                                medicine['qr_code_data'] &&
+                                            log['exp_date'] ==
+                                                medicine['exp_date'],
+                                      )
+                                      .map((log) {
+                                        final DateTime dateTime =
+                                            DateTime.parse(log['removed_at']);
+                                        final String formattedDate = DateFormat(
+                                          'yyyy-MM-dd',
+                                        ).format(dateTime);
+                                        final String formattedTime = DateFormat(
+                                          'hh:mm a',
+                                        ).format(dateTime);
+
+                                        return Padding(
+                                          padding: const EdgeInsets.only(
+                                            top: 5,
+                                          ),
+                                          child: Text(
+                                            "Removed: ${log['quantity_removed']} | Total Cost: ${log['total_cost']} | Date: $formattedDate | Time: $formattedTime",
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              color: Colors.red,
+                                            ),
+                                          ),
+                                        );
+                                      })
+                                      .toList(),
+                            ),
                         ],
+                      ),
+                      trailing: IconButton(
+                        icon: Icon(Icons.delete, color: Colors.red),
+                        onPressed: () {
+                          _confirmDelete(context, medicine, index);
+                        },
                       ),
                     ),
                   );
