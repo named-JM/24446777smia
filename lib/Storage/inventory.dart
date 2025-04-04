@@ -713,7 +713,7 @@ class _InventoryPageState extends State<InventoryPage> {
                         ],
                       ),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 2),
 
                     Expanded(
                       child: RefreshIndicator(
@@ -723,116 +723,106 @@ class _InventoryPageState extends State<InventoryPage> {
                           itemBuilder: (context, index) {
                             final item = filteredItems[index];
 
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) => UpdateItemPage(
-                                          serialNo: item['serial_no'],
-                                          qrCodeData: item['qr_code_data'],
-                                          itemName: item['item_name'],
-                                          specification: item['specification'],
-                                          unit: item['unit'],
-                                          cost: item['cost'].toString(),
-                                          qrCodeImage: item['qr_code_image'],
-                                          expDate: item['exp_date'] ?? '',
-                                          fromQRScanner: false,
-                                        ),
+                            return Container(
+                              padding: EdgeInsets.all(12),
+                              margin: const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    blurRadius: 4,
+                                    spreadRadius: 1,
                                   ),
-                                ).then((_) {
-                                  syncOfflineUpdates();
-                                  syncOnlineToOffline();
-                                });
-                              },
-                              child: Container(
-                                padding: EdgeInsets.all(12),
-                                margin: const EdgeInsets.symmetric(
-                                  vertical: 8,
-                                  horizontal: 12,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      blurRadius: 4,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.center,
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            item['item_name'],
-                                            style: TextStyle(
-                                              fontSize: 25,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
-                                          SizedBox(height: 8),
-                                          Text(
-                                            'Brand: ${item['brand']} \n'
-                                            'Category: ${item['category']} \n'
-                                            'Specification: ${item['specification']} \n'
-                                            'Unit: ${item['unit']} \n'
-                                            'Cost: ${item['cost']} \n'
-                                            'Quantity: ${item['quantity']} \n'
-                                            'Exp Date: ${item['exp_date'] ?? 'N/A'}',
-                                          ),
-                                          SizedBox(height: 8),
-                                          _buildStatusChips(item['statuses']),
-                                        ],
-                                      ),
-                                    ),
-                                    if (item['qr_code_image'] != null &&
-                                        item['qr_code_image'].startsWith(
-                                          'http',
-                                        ))
-                                      Container(
-                                        width: 150,
-                                        height: 150,
-                                        // decoration: BoxDecoration(
-                                        //   borderRadius: BorderRadius.circular(
-                                        //     10,
-                                        //   ),
-                                        //   border: Border.all(
-                                        //     color: const Color.fromARGB(
-                                        //       255,
-                                        //       209,
-                                        //       209,
-                                        //       209,
-                                        //     ),
-                                        //     width: 2,
-                                        //   ),
-                                        // ),
-                                        child: ClipRRect(
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
-                                          child: Image.network(
-                                            item['qr_code_image'],
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) =>
-                                                    Icon(
-                                                      Icons.qr_code,
-                                                      size: 50,
-                                                      color: Colors.grey,
-                                                    ),
+                                ],
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item['item_name'],
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
                                           ),
                                         ),
+                                        SizedBox(height: 5),
+                                        Text(
+                                          'Brand: ${item['brand']} \n'
+                                          'Category: ${item['category']} \n'
+                                          'Specification: ${item['specification']} \n'
+                                          'Unit: ${item['unit']} \n'
+                                          'Cost: ${item['cost']} \n'
+                                          'Quantity: ${item['quantity']} \n'
+                                          'Exp Date: ${item['exp_date'] ?? 'N/A'}',
+                                        ),
+                                        SizedBox(height: 8),
+                                        _buildStatusChips(item['statuses']),
+                                      ],
+                                    ),
+                                  ),
+                                  // Add Edit Button
+                                  IconButton(
+                                    icon: Icon(Icons.edit, color: Colors.blue),
+                                    tooltip: "Edit Item",
+                                    onPressed: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (context) => UpdateItemPage(
+                                                serialNo: item['serial_no'],
+                                                qrCodeData:
+                                                    item['qr_code_data'],
+                                                itemName: item['item_name'],
+                                                specification:
+                                                    item['specification'],
+                                                unit: item['unit'],
+                                                cost: item['cost'].toString(),
+                                                qrCodeImage:
+                                                    item['qr_code_image'],
+                                                expDate: item['exp_date'] ?? '',
+                                                fromQRScanner: false,
+                                              ),
+                                        ),
+                                      ).then((_) {
+                                        // Refresh data after returning from the update page
+                                        syncOfflineUpdates();
+                                        syncOnlineToOffline();
+                                      });
+                                    },
+                                  ),
+                                  if (item['qr_code_image'] != null &&
+                                      item['qr_code_image'].startsWith('http'))
+                                    Container(
+                                      width: 150,
+                                      height: 150,
+                                      child: ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: Image.network(
+                                          item['qr_code_image'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  Icon(
+                                                    Icons.qr_code,
+                                                    size: 50,
+                                                    color: Colors.grey,
+                                                  ),
+                                        ),
                                       ),
-                                  ],
-                                ),
+                                    ),
+                                  SizedBox(width: 5),
+                                ],
                               ),
                             );
                           },
