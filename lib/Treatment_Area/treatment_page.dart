@@ -203,6 +203,78 @@ class _TreatmentPageState extends State<TreatmentPage> {
     }
   }
 
+  void _showHistoryModal(BuildContext context, Map<String, dynamic> medicine) {
+    final filteredLogs =
+        removalLogs.where((log) {
+          return log['qr_code_data'] == medicine['qr_code_data'] &&
+              log['exp_date'] == medicine['exp_date'];
+        }).toList();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: EdgeInsets.all(16.0),
+          height: MediaQuery.of(context).size.height * 0.5,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                " ${medicine['item_name']}",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              if (filteredLogs.isNotEmpty)
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredLogs.length,
+                    itemBuilder: (context, index) {
+                      final log = filteredLogs[index];
+                      final DateTime dateTime = DateTime.parse(
+                        log['removed_at'],
+                      );
+                      final String formattedDate = DateFormat(
+                        'yyyy-MM-dd',
+                      ).format(dateTime);
+                      final String formattedTime = DateFormat(
+                        'hh:mm a',
+                      ).format(dateTime);
+
+                      return Card(
+                        margin: EdgeInsets.symmetric(vertical: 8.0),
+                        child: ListTile(
+                          title: Text(
+                            "Total Item Purchased: ${log['quantity_removed']} | Total Cost: ${log['total_cost']}",
+                            style: TextStyle(fontSize: 14),
+                          ),
+                          subtitle: Text(
+                            "Date: $formattedDate | Time: $formattedTime",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                )
+              else
+                Center(
+                  child: Text(
+                    "Still Havent Removed Any Items",
+                    style: TextStyle(fontSize: 16, color: Colors.grey),
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Show loading indicator if data is still loading
@@ -342,50 +414,63 @@ class _TreatmentPageState extends State<TreatmentPage> {
                         children: [
                           Text('Remaining: ${medicine['quantity']}'),
                           Text('Category: ${medicine['category']}'),
-                          if (removalLogs.isNotEmpty)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children:
-                                  removalLogs
-                                      .where(
-                                        (log) =>
-                                            log['qr_code_data'] ==
-                                                medicine['qr_code_data'] &&
-                                            log['exp_date'] ==
-                                                medicine['exp_date'],
-                                      )
-                                      .map((log) {
-                                        final DateTime dateTime =
-                                            DateTime.parse(log['removed_at']);
-                                        final String formattedDate = DateFormat(
-                                          'yyyy-MM-dd',
-                                        ).format(dateTime);
-                                        final String formattedTime = DateFormat(
-                                          'hh:mm a',
-                                        ).format(dateTime);
+                          // if (removalLogs.isNotEmpty)
+                          //   Column(
+                          //     crossAxisAlignment: CrossAxisAlignment.start,
+                          //     children:
+                          //         removalLogs
+                          //             .where(
+                          //               (log) =>
+                          //                   log['qr_code_data'] ==
+                          //                       medicine['qr_code_data'] &&
+                          //                   log['exp_date'] ==
+                          //                       medicine['exp_date'],
+                          //             )
+                          //             .map((log) {
+                          //               final DateTime dateTime =
+                          //                   DateTime.parse(log['removed_at']);
+                          //               final String formattedDate = DateFormat(
+                          //                 'yyyy-MM-dd',
+                          //               ).format(dateTime);
+                          //               final String formattedTime = DateFormat(
+                          //                 'hh:mm a',
+                          //               ).format(dateTime);
 
-                                        return Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 5,
-                                          ),
-                                          child: Text(
-                                            "Removed: ${log['quantity_removed']} | Total Cost: ${log['total_cost']} | Date: $formattedDate | Time: $formattedTime",
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              color: Colors.red,
-                                            ),
-                                          ),
-                                        );
-                                      })
-                                      .toList(),
-                            ),
+                          //               return Padding(
+                          //                 padding: const EdgeInsets.only(
+                          //                   top: 5,
+                          //                 ),
+                          //                 child: Text(
+                          //                   "Removed: ${log['quantity_removed']} | Total Cost: ${log['total_cost']} | Date: $formattedDate | Time: $formattedTime",
+                          //                   style: const TextStyle(
+                          //                     fontSize: 14,
+                          //                     color: Colors.red,
+                          //                   ),
+                          //                 ),
+                          //               );
+                          //             })
+                          //             .toList(),
+                          // ),
                         ],
                       ),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red),
-                        onPressed: () {
-                          _confirmDelete(context, medicine, index);
-                        },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: Icon(Icons.history, color: Colors.blue),
+                            onPressed: () {
+                              _showHistoryModal(context, medicine);
+                            },
+                            tooltip: "View History",
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.delete, color: Colors.red),
+                            onPressed: () {
+                              _confirmDelete(context, medicine, index);
+                            },
+                            tooltip: "Delete Item",
+                          ),
+                        ],
                       ),
                     ),
                   );
