@@ -5,13 +5,17 @@ import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:provider/provider.dart';
 import 'package:qrqragain/Offline_Page.dart';
 import 'package:qrqragain/Storage/qr.dart';
 import 'package:qrqragain/Storage/update.dart';
 import 'package:qrqragain/Treatment_Area/remove_item.dart';
 import 'package:qrqragain/constants.dart';
+import 'package:qrqragain/user_provider.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
 
 class InventoryPage extends StatefulWidget {
   final List<dynamic> lowStockItems;
@@ -29,6 +33,7 @@ class _InventoryPageState extends State<InventoryPage> {
   List<dynamic> categories = [];
   String selectedCategory = 'All Categories';
   bool isLoading = true; // Add isLoading variable
+
   final TextEditingController searchController = TextEditingController();
   //load when the page opens
   @override
@@ -97,7 +102,7 @@ class _InventoryPageState extends State<InventoryPage> {
       }
 
       List<Map<String, dynamic>> updates = batchedUpdates.values.toList();
-      print("Final updates being sent: ${jsonEncode({'updates': updates})}");
+      // print("Final updates being sent: ${jsonEncode({'updates': updates})}");
 
       try {
         final response = await http.post(
@@ -156,7 +161,7 @@ class _InventoryPageState extends State<InventoryPage> {
               .map((e) => Map<String, dynamic>.from(e))
               .toList();
 
-      print("Final removals being sent: ${jsonEncode({'removals': removals})}");
+      //  print("Final removals being sent: ${jsonEncode({'removals': removals})}");
 
       try {
         final response = await http.post(
@@ -308,12 +313,12 @@ class _InventoryPageState extends State<InventoryPage> {
   Future<void> fetchItems() async {
     try {
       final response = await http.get(Uri.parse('$BASE_URL/get_items.php'));
-      print("Raw Response: ${response.body}"); // Debugging
+      //  print("Raw Response: ${response.body}"); // Debugging
 
       if (response.statusCode == 200) {
         try {
           final jsonResponse = jsonDecode(response.body);
-          print("Parsed JSON: $jsonResponse"); // Debugging
+          //   print("Parsed JSON: $jsonResponse"); // Debugging
 
           if (jsonResponse is Map<String, dynamic> &&
               jsonResponse.containsKey('items')) {
@@ -494,6 +499,298 @@ class _InventoryPageState extends State<InventoryPage> {
     }
   }
 
+  Future<void> downloadExcel(BuildContext context, List<dynamic> items) async {
+    if (items.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No data available for Excel download.")),
+      );
+      return;
+    }
+
+    PermissionStatus status = await Permission.manageExternalStorage.request();
+
+    if (!status.isGranted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            "❌ Storage permission denied! Please allow it in settings.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final xlsio.Workbook workbook = xlsio.Workbook();
+      final xlsio.Worksheet sheet = workbook.worksheets[0];
+      sheet.name = 'Inventory';
+
+      final Set<String> allUsers = {};
+      final Set<String> allDates = {};
+
+      for (var item in items) {
+        final logs = item['removal_logs'] as List<dynamic>? ?? [];
+        for (var log in logs) {
+          final user = log['user_name'] ?? 'Unknown User';
+          final date = log['removal_date'] ?? '';
+          allUsers.add(user);
+          allDates.add(date);
+        }
+      }
+
+      final userList = allUsers.toList()..sort();
+      final dateList = allDates.toList()..sort();
+      // Calculate the range of removal dates
+      DateTime? minDate;
+      DateTime? maxDate;
+
+      for (var item in items) {
+        final removalLogs = item['removal_logs'] as List<dynamic>? ?? [];
+        for (var log in removalLogs) {
+          final dateStr = log['removal_date'];
+          if (dateStr != null && dateStr.isNotEmpty) {
+            final date = DateTime.tryParse(dateStr);
+            if (date != null) {
+              if (minDate == null || date.isBefore(minDate)) {
+                minDate = date;
+              }
+              if (maxDate == null || date.isAfter(maxDate)) {
+                maxDate = date;
+              }
+            }
+          }
+        }
+      }
+
+      // Format the date range
+      String dateRange = '';
+      if (minDate != null && maxDate != null) {
+        if (minDate == maxDate) {
+          dateRange = DateFormat.yMMMMd().format(minDate); // Single date
+        } else {
+          dateRange =
+              "${DateFormat.yMMMMd().format(minDate)} - ${DateFormat.yMMMMd().format(maxDate)}"; // Date range
+        }
+      } else {
+        dateRange = "No removal dates available"; // Fallback if no dates exist
+      }
+
+      // Title rows
+      final List<String> titles = [
+        "Provincial Government of Bulacan",
+        "Governor's Office Extension Warehouse",
+        "City of Malolos, Bulacan",
+        "DSBTO PGB PHARMACYSTOCK INVENTORY",
+        "Inventory Report of Drugs and Medicines",
+        // Use the calculated date range
+        "Date: $dateRange",
+      ];
+
+      final endCol = 4 + userList.length * dateList.length;
+      final endColLetter = _getExcelColumnName(endCol);
+
+      int titleRow = 1;
+      for (final text in titles) {
+        final range = sheet.getRangeByName(
+          'A$titleRow:${endColLetter}$titleRow',
+        );
+        range.merge();
+        range.setText(text);
+        range.cellStyle.bold = true;
+        range.cellStyle.fontSize = 14;
+        range.cellStyle.hAlign = xlsio.HAlignType.center;
+        titleRow++;
+      }
+
+      // Header Rows
+      List<String> headerRow1 = [
+        'Item Name', // Concatenated column
+        'Aizen Inventory', // Second column
+      ];
+      List<String> headerRow2 = ['', ''];
+
+      // Add user-related headers dynamically
+      for (var user in userList) {
+        for (var date in dateList) {
+          headerRow1.add("$user");
+          headerRow2.add(date);
+        }
+      }
+
+      // Add Total Inventory and Status columns
+      headerRow1.add('Total Inventory');
+      headerRow1.add('Status');
+      headerRow2.add('');
+      headerRow2.add('');
+
+      // Import headers into the sheet
+      sheet.importList(headerRow1, titleRow, 1, false);
+      sheet.importList(headerRow2, titleRow + 1, 1, false);
+
+      int currentRow = titleRow + 2;
+
+      for (var item in items) {
+        final removalLogs = item['removal_logs'] as List<dynamic>? ?? [];
+        final Map<String, Map<String, int>> userDateQty = {};
+
+        for (var log in removalLogs) {
+          final user = log['user_name'] ?? 'Unknown User';
+          final date = log['removal_date'] ?? '';
+          final qty = log['quantity_removed'] ?? 0;
+          final intQty = qty is int ? qty : int.tryParse(qty.toString()) ?? 0;
+
+          userDateQty[user] ??= {};
+          userDateQty[user]![date] = (userDateQty[user]![date] ?? 0) + intQty;
+        }
+
+        // Build the row
+        List<String> row = [
+          '${item['item_name'] ?? ''} (${item['unit'] ?? ''})', // Concatenated Item Name + Unit
+          item['origin_quantity'].toString(), // Aizen Inventory
+        ];
+
+        // Add user-related data dynamically
+        for (var user in userList) {
+          for (var date in dateList) {
+            final qty = userDateQty[user]?[date] ?? 0;
+            row.add(qty == 0 ? '' : qty.toString());
+          }
+        }
+
+        // Add Total Inventory and Status
+        row.add(item['quantity'].toString()); // Total Inventory
+        row.add(item['exp_date'] ?? ''); // Status
+
+        // Import the row into the sheet
+        sheet.importList(row, currentRow, 1, false);
+        currentRow++;
+      }
+
+      // Add Footer with Date of Print
+      final footerRow = currentRow + 2; // Leave one blank row after the table
+      final footerRange = sheet.getRangeByName('A$footerRow'); // Only column A
+      footerRange.setText("Date of Print");
+      footerRange.cellStyle.bold = true;
+      footerRange.cellStyle.fontSize = 12;
+      footerRange.cellStyle.hAlign = xlsio.HAlignType.left; // Align to the left
+
+      // Add merged row for the actual date of print
+      final footerValueRow = footerRow + 1; // Row below "Date of Print"
+      final footerValueRange = sheet.getRangeByName(
+        'A$footerValueRow:B$footerValueRow',
+      ); // Merge columns A and B
+      footerValueRange.merge();
+      footerValueRange.setText(
+        DateFormat.yMMMMd().format(DateTime.now()),
+      ); // Set the current date
+      footerValueRange.cellStyle.bold = true;
+      footerValueRange.cellStyle.fontSize = 12;
+      footerValueRange.cellStyle.hAlign =
+          xlsio.HAlignType.center; // Align to the center
+
+      // // Add Signature Section
+      // final signatureRow =
+      //     footerValueRow + 4; // 4 rows below the "Date of Print"
+      // final signatureLabelRange = sheet.getRangeByName(
+      //   'A$signatureRow',
+      // ); // Only column A
+
+      // Add Signature Section
+      final signatureRow =
+          footerValueRow + 4; // 4 rows below the "Date of Print"
+
+      // First Signature (Timothy Brian A. Hernandez)
+      final signatureValueRange1 = sheet.getRangeByName(
+        'A$signatureRow:B$signatureRow',
+      ); // Merge columns A and B
+      signatureValueRange1.merge();
+      signatureValueRange1.setText("Timothy Brian A. Hernandez");
+      signatureValueRange1.cellStyle.bold = true;
+      signatureValueRange1.cellStyle.fontSize = 12;
+      signatureValueRange1.cellStyle.hAlign =
+          xlsio.HAlignType.center; // Align to the center
+
+      // Second Signature (Iceacris A. Garcia)
+      final signatureValueRange2 = sheet.getRangeByName(
+        'C$signatureRow:D$signatureRow',
+      ); // Merge columns C and D
+      signatureValueRange2.merge();
+      signatureValueRange2.setText("Iceacris A. Garcia");
+      signatureValueRange2.cellStyle.bold = true;
+      signatureValueRange2.cellStyle.fontSize = 12;
+      signatureValueRange2.cellStyle.hAlign =
+          xlsio.HAlignType.center; // Align to the center
+
+      // Add Position for First Signature
+      final positionRow1 = signatureRow + 1; // Row below the first signature
+      final positionRange1 = sheet.getRangeByName(
+        'A$positionRow1:B$positionRow1',
+      ); // Merge columns A and B
+      positionRange1.merge();
+      positionRange1.setText("Pharmacist II");
+      positionRange1.cellStyle.bold = true;
+      positionRange1.cellStyle.fontSize = 12;
+      positionRange1.cellStyle.hAlign =
+          xlsio.HAlignType.center; // Align to the center
+
+      // Add Position for Second Signature
+      final positionRow2 = signatureRow + 1; // Row below the second signature
+      final positionRange2 = sheet.getRangeByName(
+        'C$positionRow2:D$positionRow2',
+      ); // Merge columns C and D
+      positionRange2.merge();
+      positionRange2.setText("Administrative Officer");
+      positionRange2.cellStyle.bold = true;
+      positionRange2.cellStyle.fontSize = 12;
+      positionRange2.cellStyle.hAlign =
+          xlsio.HAlignType.center; // Align to the center
+      // Auto-fit and style
+      for (int i = 1; i <= endCol; i++) {
+        sheet.autoFitColumn(i);
+      }
+
+      final xlsio.Style borderStyle = workbook.styles.add('BorderStyle');
+      borderStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      final fullRange = sheet.getRangeByName(
+        'A${titleRow}:${endColLetter}$currentRow',
+      );
+      fullRange.cellStyle = borderStyle;
+
+      // Save
+      final List<int> bytes = workbook.saveAsStream();
+      workbook.dispose();
+
+      final downloadsDir = Directory('/storage/emulated/0/Download');
+      final filePath = '${downloadsDir.path}/inventory_data.xlsx';
+      final file = File(filePath);
+      file.createSync(recursive: true);
+      file.writeAsBytesSync(bytes);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("✅ Excel saved to Downloads folder.")),
+      );
+
+      await OpenFile.open(filePath);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("❌ Error saving or opening Excel: $e")),
+      );
+      print("Error: $e");
+    }
+  }
+
+  // Helper to convert column index to Excel letter (e.g. 1 => A, 27 => AA)
+  String _getExcelColumnName(int index) {
+    String colName = '';
+    while (index > 0) {
+      int mod = (index - 1) % 26;
+      colName = String.fromCharCode(65 + mod) + colName;
+      index = (index - mod - 1) ~/ 26;
+    }
+    return colName;
+  }
+
   Future<void> downloadCSV(BuildContext context, List<dynamic> items) async {
     if (items.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -519,31 +816,93 @@ class _InventoryPageState extends State<InventoryPage> {
         // Save the file in the Downloads folder
         String filePath = "${downloadsDirectory.path}/inventory_data.csv";
         File file = File(filePath);
+
         await file.writeAsString(
-          const ListToCsvConverter().convert([
-            [
+          const ListToCsvConverter().convert(() {
+            final Set<String> allUsers = {};
+            final Set<String> allDates = {};
+
+            // Step 1: Collect unique users and dates
+            for (var item in items) {
+              final logs = item['removal_logs'] as List<dynamic>? ?? [];
+              for (var log in logs) {
+                final user = log['user_name'] ?? 'Unknown User';
+                final date = log['removal_date'] ?? '';
+                allUsers.add(user);
+                allDates.add(date);
+              }
+            }
+
+            final userList = allUsers.toList()..sort();
+            final dateList = allDates.toList()..sort();
+
+            // Step 2: Build two header rows
+            final List<String> headerRow1 = [
               "Item Name",
-              "Brand",
-              "Category",
-              "Specification",
               "Unit",
-              "Cost",
-              "Quantity",
+              "Origin Quantity",
               "Exp Date",
-            ],
-            ...items.map(
-              (item) => [
-                item['item_name'],
-                item['brand'],
-                item['category'],
-                item['specification'],
-                item['unit'],
-                item['cost'],
-                item['quantity'],
-                item['exp_date'] ?? 'N/A',
-              ],
-            ),
-          ]),
+            ];
+
+            final List<String> headerRow2 = List.filled(
+              headerRow1.length,
+              "",
+              growable: true,
+            );
+
+            for (var user in userList) {
+              for (var date in dateList) {
+                headerRow1.add("Removed by $user");
+                headerRow2.add(date);
+              }
+            }
+            headerRow1.add("Total Quantity Removed");
+            headerRow2.add(""); // for total
+
+            // Step 3: Build the rows
+            final List<List<String>> csvRows = [headerRow1, headerRow2];
+
+            for (var item in items) {
+              final removalLogs = item['removal_logs'] as List<dynamic>? ?? [];
+
+              // Create a nested map: user -> date -> qty
+              final Map<String, Map<String, int>> userDateQty = {};
+              for (var log in removalLogs) {
+                final user = log['user_name'] ?? 'Unknown User';
+                final date = log['removal_date'] ?? '';
+                final qty = log['quantity_removed'] ?? 0;
+                final intQty =
+                    qty is int ? qty : int.tryParse(qty.toString()) ?? 0;
+
+                userDateQty[user] ??= {};
+                userDateQty[user]![date] =
+                    (userDateQty[user]![date] ?? 0) + intQty;
+              }
+
+              int totalRemoved = 0;
+
+              final row = [
+                item['item_name'] ?? '',
+                item['unit'] ?? '',
+                item['origin_quantity'].toString(),
+                item['exp_date'] ?? '',
+              ];
+
+              for (var user in userList) {
+                for (var date in dateList) {
+                  final qty = userDateQty[user]?[date] ?? 0;
+                  totalRemoved += qty;
+                  row.add(qty == 0 ? '' : qty.toString());
+                }
+              }
+
+              row.add(totalRemoved.toString());
+
+              csvRows.add(row.map((e) => e.toString()).toList());
+            }
+
+            return csvRows;
+          }()),
         );
 
         ScaffoldMessenger.of(context).showSnackBar(
@@ -562,7 +921,6 @@ class _InventoryPageState extends State<InventoryPage> {
         print("Error saving or opening CSV: $e");
       }
     } else if (status.isPermanentlyDenied) {
-      // Show Dialog Only if User Permanently Denied
       showDialog(
         context: context,
         builder:
@@ -599,9 +957,11 @@ class _InventoryPageState extends State<InventoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    final userProvider = Provider.of<UserProvider>(context);
+    final isAdmin =
+        userProvider.role == 'admin'; // Check if the user is an admin
+
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 247, 247, 247),
-      // backgroundColor: const Color.fromARGB(255, 242, 241, 241),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         title: Center(
@@ -617,15 +977,13 @@ class _InventoryPageState extends State<InventoryPage> {
       ),
       body:
           isLoading
-              ? Center(
-                child: CircularProgressIndicator(),
-              ) // Show loading indicator
+              ? Center(child: CircularProgressIndicator())
               : Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: Column(
                   children: [
                     TextField(
-                      controller: searchController, // Bind the controller
+                      controller: searchController,
                       decoration: InputDecoration(
                         labelText: 'Search',
                         border: OutlineInputBorder(),
@@ -634,31 +992,24 @@ class _InventoryPageState extends State<InventoryPage> {
                       onChanged: filterItems,
                     ),
                     SizedBox(height: 10),
-
-                    // Buttons with full width and margin
                     Container(
                       width: double.infinity,
-                      margin: EdgeInsets.symmetric(
-                        horizontal: 16,
-                      ), // ✅ Adds margin both sides
+                      margin: EdgeInsets.symmetric(horizontal: 16),
                       child: Row(
                         children: [
-                          // Dropdown with full width
                           Expanded(
                             child: Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: 12,
-                              ), // ✅ Padding inside
+                              padding: EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
                                 border: Border.all(
                                   color: Colors.green.shade900,
                                   width: 1,
-                                ), // ✅ Border for dropdown
+                                ),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: DropdownButtonHideUnderline(
                                 child: DropdownButton<String>(
-                                  isExpanded: true, // ✅ Full width
+                                  isExpanded: true,
                                   value: selectedCategory,
                                   icon: const Icon(Icons.arrow_downward),
                                   iconSize: 24,
@@ -686,35 +1037,32 @@ class _InventoryPageState extends State<InventoryPage> {
                             ),
                           ),
                           SizedBox(width: 10),
-
-                          // QR Scanner Icon Button
-                          IconButton(
-                            onPressed: openQRScanner,
-                            icon: Icon(
-                              Icons.qr_code_scanner,
-                              size: 30,
-                              color: Colors.green[900],
+                          if (isAdmin || userProvider.role == 'user')
+                            IconButton(
+                              onPressed: openQRScanner,
+                              icon: Icon(
+                                Icons.qr_code_scanner,
+                                size: 30,
+                                color: Colors.green[900],
+                              ),
+                              tooltip: "Scan QR Code",
                             ),
-                            tooltip: "Scan QR Code",
-                          ),
-
-                          // Download Icon Button
-                          IconButton(
-                            onPressed: () {
-                              downloadCSV(context, filteredItems);
-                            },
-                            icon: Icon(
-                              Icons.download,
-                              size: 30,
-                              color: Colors.green[900],
+                          if (isAdmin)
+                            IconButton(
+                              onPressed: () {
+                                downloadExcel(context, filteredItems);
+                              },
+                              icon: Icon(
+                                Icons.download,
+                                size: 30,
+                                color: Colors.green[900],
+                              ),
+                              tooltip: "Download CSV",
                             ),
-                            tooltip: "Download CSV",
-                          ),
                         ],
                       ),
                     ),
                     SizedBox(height: 2),
-
                     Expanded(
                       child: RefreshIndicator(
                         onRefresh: fetchItems,
@@ -748,13 +1096,30 @@ class _InventoryPageState extends State<InventoryPage> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
                                       children: [
-                                        Text(
-                                          item['item_name'],
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                        Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children:
+                                              (item['item_name'] as String)
+                                                  .split(' ')
+                                                  .map(
+                                                    (word) => FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      alignment:
+                                                          Alignment.centerLeft,
+                                                      child: Text(
+                                                        word,
+                                                        style: TextStyle(
+                                                          fontSize: 21,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  )
+                                                  .toList(),
                                         ),
+
                                         SizedBox(height: 5),
                                         Text(
                                           'Brand: ${item['brand']} \n'
@@ -770,37 +1135,42 @@ class _InventoryPageState extends State<InventoryPage> {
                                       ],
                                     ),
                                   ),
-                                  // Add Edit Button
-                                  IconButton(
-                                    icon: Icon(Icons.edit, color: Colors.blue),
-                                    tooltip: "Edit Item",
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder:
-                                              (context) => UpdateItemPage(
-                                                serialNo: item['serial_no'],
-                                                qrCodeData:
-                                                    item['qr_code_data'],
-                                                itemName: item['item_name'],
-                                                specification:
-                                                    item['specification'],
-                                                unit: item['unit'],
-                                                cost: item['cost'].toString(),
-                                                qrCodeImage:
-                                                    item['qr_code_image'],
-                                                expDate: item['exp_date'] ?? '',
-                                                fromQRScanner: false,
-                                              ),
-                                        ),
-                                      ).then((_) {
-                                        // Refresh data after returning from the update page
-                                        syncOfflineUpdates();
-                                        syncOnlineToOffline();
-                                      });
-                                    },
-                                  ),
+                                  if (isAdmin ||
+                                      userProvider.role ==
+                                          'user') // Show Edit button only for admin
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit,
+                                        color: Colors.blue,
+                                      ),
+                                      tooltip: "Edit Item",
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder:
+                                                (context) => UpdateItemPage(
+                                                  serialNo: item['serial_no'],
+                                                  qrCodeData:
+                                                      item['qr_code_data'],
+                                                  itemName: item['item_name'],
+                                                  specification:
+                                                      item['specification'],
+                                                  unit: item['unit'],
+                                                  cost: item['cost'].toString(),
+                                                  qrCodeImage:
+                                                      item['qr_code_image'],
+                                                  expDate:
+                                                      item['exp_date'] ?? '',
+                                                  fromQRScanner: false,
+                                                ),
+                                          ),
+                                        ).then((_) {
+                                          syncOfflineUpdates();
+                                          syncOnlineToOffline();
+                                        });
+                                      },
+                                    ),
                                   if (item['qr_code_image'] != null &&
                                       item['qr_code_image'].startsWith('http'))
                                     Container(
