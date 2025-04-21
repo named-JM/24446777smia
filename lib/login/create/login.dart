@@ -204,7 +204,6 @@ class _LoginScreenState extends State<LoginScreen> {
   //     }
   //   }
   // }
-
   Future<void> loginUser(BuildContext context) async {
     final String email = emailController.text;
     final String password = passwordController.text;
@@ -218,12 +217,6 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    var connectivityResult = await Connectivity().checkConnectivity();
-    if (connectivityResult == ConnectivityResult.none) {
-      await offlineLogin(email, password);
-      return;
-    }
-
     try {
       final String apiUrl = "$BASE_URL/login.php";
       final response = await http.post(
@@ -233,27 +226,33 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200 && response.body.isNotEmpty) {
         final data = jsonDecode(response.body);
-        print("Server Response: ${response.body}");
         if (data["status"] == "success") {
-          final userID =
-              data["u_id"].toString(); // Get userID from the server response
-          print("User ID from server: $userID"); // Debugging userID
+          final userID = data["u_id"].toString();
+          final role = data["role"].toString(); // Get role from the server
 
-          //set userid in user provider
+          // Set userID and role in UserProvider
           final userProvider = Provider.of<UserProvider>(
             context,
             listen: false,
           );
-          userProvider.setUserID(userID); // Set userID in the provider
+          userProvider.setUserID(userID);
+          userProvider.setRole(role);
+          // Fetch full user data (first name, last name, etc.) from the server
+          await _fetchUserData(userID, userProvider);
 
+          print("User ID from server: $userID"); // Debugging userID
           SharedPreferences prefs = await SharedPreferences.getInstance();
           await prefs.setString('email', email);
           await prefs.setString('password', password);
+          await prefs.setString('role', role); // Save role locally
 
           if (mounted) {
             ScaffoldMessenger.of(
               context,
             ).showSnackBar(SnackBar(content: Text("Login successful!")));
+            print("Login function called");
+            print("Response status: ${response.statusCode}");
+            print("Response body: ${response.body}");
           }
           Navigator.pushReplacement(
             context,
@@ -266,10 +265,117 @@ class _LoginScreenState extends State<LoginScreen> {
         showErrorMessage("Server error. Please try again later.");
       }
     } catch (e) {
-      print("Login Error: $e"); // Debugging
+      print("Login Error: $e");
       showErrorMessage("An error occurred. Please try again.");
     }
   }
+
+  // Function to fetch the full user data from the backend
+  Future<void> _fetchUserData(String userID, UserProvider userProvider) async {
+    try {
+      final String userApiUrl = "$BASE_URL/get_user_details.php";
+      final response = await http.post(
+        Uri.parse(userApiUrl),
+        body: {"u_id": userID},
+      );
+      print("Raw Response: ${response.body}"); // Debugging the raw response
+
+      // Check if the response body is valid JSON
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        try {
+          final data = jsonDecode(
+            response.body,
+          ); // This is where the exception happens
+          if (data["status"] == "success") {
+            final firstName = data["first_name"].toString();
+            final lastName = data["last_name"].toString();
+            final fullName =
+                "$firstName $lastName"; // Combine first and last name
+
+            // Update user data in the provider
+            userProvider.setUserMap({userID: fullName});
+
+            print("User full name: $fullName"); // Debugging full name
+          } else {
+            print("Failed to fetch user details: ${data["message"]}");
+          }
+        } catch (e) {
+          print("Error decoding JSON: $e");
+        }
+      } else {
+        print("Failed to fetch user details. Server error.");
+      }
+    } catch (e) {
+      print("Error fetching user details: $e");
+    }
+  }
+
+  //latest loginuser
+  // Future<void> loginUser(BuildContext context) async {
+  //   final String email = emailController.text;
+  //   final String password = passwordController.text;
+
+  //   if (email.isEmpty || password.isEmpty) {
+  //     if (mounted) {
+  //       ScaffoldMessenger.of(
+  //         context,
+  //       ).showSnackBar(SnackBar(content: Text('Please fill in all fields')));
+  //     }
+  //     return;
+  //   }
+
+  //   var connectivityResult = await Connectivity().checkConnectivity();
+  //   if (connectivityResult == ConnectivityResult.none) {
+  //     await offlineLogin(email, password);
+  //     return;
+  //   }
+
+  //   try {
+  //     final String apiUrl = "$BASE_URL/login.php";
+  //     final response = await http.post(
+  //       Uri.parse(apiUrl),
+  //       body: {"email_address": email, "password": password},
+  //     );
+
+  //     if (response.statusCode == 200 && response.body.isNotEmpty) {
+  //       final data = jsonDecode(response.body);
+  //       print("Server Response: ${response.body}");
+  //       if (data["status"] == "success") {
+  //         final userID =
+  //             data["u_id"].toString(); // Get userID from the server response
+  //         print("User ID from server: $userID"); // Debugging userID
+
+  //         //set userid in user provider
+  //         final userProvider = Provider.of<UserProvider>(
+  //           context,
+  //           listen: false,
+  //         );
+  //         userProvider.setUserID(userID); // Set userID in the provider
+
+  //         SharedPreferences prefs = await SharedPreferences.getInstance();
+  //         await prefs.setString('email', email);
+  //         await prefs.setString('password', password);
+
+  //         if (mounted) {
+  //           ScaffoldMessenger.of(
+  //             context,
+  //           ).showSnackBar(SnackBar(content: Text("Login successful!")));
+  //         }
+  //         Navigator.pushReplacement(
+  //           context,
+  //           MaterialPageRoute(builder: (context) => HomeScreen()),
+  //         );
+  //       } else {
+  //         showErrorMessage(data["message"] ?? "Login failed. Try again.");
+  //       }
+  //     } else {
+  //       showErrorMessage("Server error. Please try again later.");
+  //     }
+  //   } catch (e) {
+  //     print("Login Error: $e"); // Debugging
+  //     showErrorMessage("An error occurred. Please try again.");
+  //   }
+  // }
 
   Future<void> offlineLogin(String email, String password) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

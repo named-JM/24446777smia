@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
 import 'package:provider/provider.dart';
 import 'package:qrqragain/Generate_QR_Code/qr_home.dart';
+import 'package:qrqragain/Generate_QR_Code/user_management.dart';
 import 'package:qrqragain/Storage/inventory.dart';
 import 'package:qrqragain/Treatment_Area/treatment_page.dart';
 import 'package:qrqragain/constants.dart';
@@ -36,10 +37,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    hasNewNotif = false; // Reset the notification flag on initialization
-    _startAutoCheck(); // Start auto-refresh
-
-    checkLowStock(); // Initial check for low stock
+    hasNewNotif = false;
+    _startAutoCheck();
+    checkLowStock();
     print("New Notif Status: $hasNewNotif");
     // Ensure first API call after UI build
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -98,7 +98,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         categories = fetchedCategories;
-
         if (selectedCategory == null ||
             !categories.contains(selectedCategory)) {
           selectedCategory = categories.isNotEmpty ? categories[0] : null;
@@ -137,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
             'exp_date': item['exp_date'],
             'brand': item['brand'],
             'category': item['category'],
-            'item_name': item['item_name'], // Add missing fields
+            'item_name': item['item_name'],
             'specification': item['specification'],
             'unit': item['unit'],
             'cost': item['cost'],
@@ -147,7 +146,7 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       List<Map<String, dynamic>> updates = batchedUpdates.values.toList();
-      //print("Final updates being sent: ${jsonEncode({'updates': updates})}");
+      print("Final updates being sent: ${jsonEncode({'updates': updates})}");
 
       try {
         final response = await http.post(
@@ -268,10 +267,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        // Log the API response for debugging
+        //for debuggings
         print("API Response: $data");
 
-        // Filter out items where status is "normal"
+        // filter out normal status
         List<dynamic> newItems =
             (data['items'] ?? [])
                 .where(
@@ -304,7 +303,13 @@ class _HomeScreenState extends State<HomeScreen> {
             // Debugging
             print("Previous Low Stock Items: $previousLowStockItems");
             print("Current Low Stock Items: $lowStockItems");
-
+            if (hasNewItems) {
+              print("New notifications detected!");
+              hasNewNotif = true;
+            } else {
+              print("No new notifications.");
+              hasNewNotif = false;
+            }
             // Update the previous list for the next comparison
             // previousLowStockItems = List.from(newItems);
           });
@@ -470,13 +475,14 @@ class _HomeScreenState extends State<HomeScreen> {
         statusText = "Expired";
         break;
       default:
-        return SizedBox(); // Ignore "normal" status
+        return SizedBox(); // Ignore "normal" statuss
     }
 
     // Set background color based on whether the item is new
-    final backgroundColor = isNew ? Colors.yellow[100] : Colors.white;
+    final backgroundColor = isNew ? Colors.greenAccent : Colors.white;
 
     return Card(
+      key: ValueKey('$itemName-$expiry-$status-$isNew'),
       color: backgroundColor, // Set the background color dynamically
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -512,6 +518,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
     print("USER ID: ${userProvider.userID ?? "Not logged in"}");
+    final isAdmin =
+        userProvider.role == 'admin'; // Check if the user is an admin
 
     return Scaffold(
       appBar: AppBar(
@@ -560,9 +568,9 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
-                SizedBox(height: 60),
-                Image.asset('assets/bulacan_logo.png', width: 250, height: 250),
-                SizedBox(height: 50),
+                SizedBox(height: 48),
+                Image.asset('assets/bulacan_logo.png', width: 220, height: 220),
+                SizedBox(height: 40),
                 Container(
                   width: double.infinity,
                   margin: EdgeInsets.symmetric(
@@ -651,6 +659,39 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: const Text('Generate QR Code'),
                   ),
                 ),
+                SizedBox(height: 20),
+                if (isAdmin)
+                  // Generate QR Code Button
+                  Container(
+                    width: double.infinity, // Full width
+                    margin: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                    ), // Add margin
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => UserManagement(),
+                          ),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor:
+                            Colors.lightGreen, // Green button color
+                        padding: const EdgeInsets.symmetric(vertical: 16.0),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18.0),
+                        ),
+                        textStyle: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      child: const Text('User Management'),
+                    ),
+                  ),
               ],
             ),
           ),
