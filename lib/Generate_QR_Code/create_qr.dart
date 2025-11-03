@@ -33,7 +33,7 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   List<dynamic> categories = [];
 
   Future<void> fetchCategories() async {
-    final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
+    final response = await http.get(Uri.parse('$BASE_URL/Category/all'));
     if (response.statusCode == 200) {
       if (mounted) {
         setState(() {
@@ -72,7 +72,7 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
   }
 
   Future<void> sendDataToServer(String base64QR) async {
-    final url = '$BASE_URL/add_item.php'; // Change to your server URL
+    final url = '$BASE_URL/Items/add'; // Change to your server URL
     final response = await http.post(
       Uri.parse(url),
       headers: {"Content-Type": "application/json; charset=UTF-8"},
@@ -205,6 +205,200 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
         context,
       ).showSnackBar(SnackBar(content: Text('Error saving QR code: $e')));
     }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Generate QR')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'NEW ITEM',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('Category:'),
+                  DropdownButton<String>(
+                    value: categories.isNotEmpty ? selectedCategory : null,
+                    hint: Text("Select Category"),
+                    onChanged: (value) {
+                      setState(() => selectedCategory = value!);
+                    },
+                    items:
+                        categories
+                            .map(
+                              (category) => DropdownMenuItem<String>(
+                                value: category["name"] as String,
+                                child: Text(category["name"] as String),
+                              ),
+                            )
+                            .toList(),
+                  ),
+                ],
+              ),
+              _buildTextField('Serial No.', serialController),
+              _buildTextField('Brand Name', brandController),
+              _buildTextField('Item Name', itemNameController),
+              _buildTextField('Specification', specController),
+              _buildNumberField(
+                'Quantity',
+                quantityController,
+              ), // Updated Quantity Field
+              Row(
+                children: [
+                  Expanded(child: _buildTextField('Unit', unitController)),
+                  SizedBox(width: 10),
+                  Expanded(child: _buildTextField('Cost', costController)),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
+                      onTap:
+                          () =>
+                              _showMonthYearPicker(context, mfgDateController),
+                      child: AbsorbPointer(
+                        child: _buildTextField(
+                          'Mfg Date (MM/YYYY)',
+                          mfgDateController,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: GestureDetector(
+                      onTap:
+                          () =>
+                              _showMonthYearPicker(context, expDateController),
+                      child: AbsorbPointer(
+                        child: _buildTextField(
+                          'Exp Date (MM/YYYY)',
+                          expDateController,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    if (validateFields()) {
+                      generateQR(); // Generate QR code data
+                      saveQR(); // Save the QR Code to Downloads
+                      await saveQRAndSendToServer(); // Capture and send QR code image
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                  ),
+                  child: Text(
+                    'CREATE ITEM',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              if (qrData.trim().isNotEmpty)
+                Center(
+                  child: Column(
+                    children: [
+                      Screenshot(
+                        controller: screenshotController,
+                        child: QrImageView(data: qrData, size: 200),
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () async {
+                          await saveQR(); // Save the QR Code to Downloads
+                        },
+                        child: Text('Download QR'),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+      child: TextField(
+        controller: controller,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNumberField(String label, TextEditingController controller) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(),
+          suffixIcon: SizedBox(
+            height: 30, // Reduce height
+            width: 30, // Adjust width as needed
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  height: 14, // Reduce button height
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_drop_up, size: 16), // Smaller icon
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      int currentValue = int.tryParse(controller.text) ?? 0;
+                      setState(() {
+                        controller.text = (currentValue + 1).toString();
+                      });
+                    },
+                  ),
+                ),
+                SizedBox(
+                  height: 14, // Reduce button height
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_drop_down, size: 16), // Smaller icon
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                    onPressed: () {
+                      int currentValue = int.tryParse(controller.text) ?? 0;
+                      if (currentValue > 0) {
+                        setState(() {
+                          controller.text = (currentValue - 1).toString();
+                        });
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _showMonthYearPicker(
@@ -384,199 +578,6 @@ class _QRGeneratorPageState extends State<QRGeneratorPage> {
           },
         );
       },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Generate QR')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'NEW ITEM',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Category:'),
-                  DropdownButton<String>(
-                    value: selectedCategory,
-                    onChanged: (value) {
-                      setState(() => selectedCategory = value!);
-                    },
-                    items:
-                        categories
-                            .map(
-                              (category) => DropdownMenuItem<String>(
-                                value: category["name"] as String,
-                                child: Text(category["name"] as String),
-                              ),
-                            )
-                            .toList(),
-                  ),
-                ],
-              ),
-              _buildTextField('Serial No.', serialController),
-              _buildTextField('Brand Name', brandController),
-              _buildTextField('Item Name', itemNameController),
-              _buildTextField('Specification', specController),
-              _buildNumberField(
-                'Quantity',
-                quantityController,
-              ), // Updated Quantity Field
-              Row(
-                children: [
-                  Expanded(child: _buildTextField('Unit', unitController)),
-                  SizedBox(width: 10),
-                  Expanded(child: _buildTextField('Cost', costController)),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap:
-                          () =>
-                              _showMonthYearPicker(context, mfgDateController),
-                      child: AbsorbPointer(
-                        child: _buildTextField(
-                          'Mfg Date (MM/YYYY)',
-                          mfgDateController,
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap:
-                          () =>
-                              _showMonthYearPicker(context, expDateController),
-                      child: AbsorbPointer(
-                        child: _buildTextField(
-                          'Exp Date (MM/YYYY)',
-                          expDateController,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-              Center(
-                child: ElevatedButton(
-                  onPressed: () async {
-                    if (validateFields()) {
-                      generateQR(); // Generate QR code data
-                      saveQR(); // Save the QR Code to Downloads
-                      await saveQRAndSendToServer(); // Capture and send QR code image
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
-                  ),
-                  child: Text(
-                    'CREATE ITEM',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              if (qrData.trim().isNotEmpty)
-                Center(
-                  child: Column(
-                    children: [
-                      Screenshot(
-                        controller: screenshotController,
-                        child: QrImageView(data: qrData, size: 200),
-                      ),
-                      SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: () async {
-                          await saveQR(); // Save the QR Code to Downloads
-                        },
-                        child: Text('Download QR'),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTextField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-      child: TextField(
-        controller: controller,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNumberField(String label, TextEditingController controller) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 5),
-      child: TextField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        decoration: InputDecoration(
-          labelText: label,
-          border: OutlineInputBorder(),
-          suffixIcon: SizedBox(
-            height: 30, // Reduce height
-            width: 30, // Adjust width as needed
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                SizedBox(
-                  height: 14, // Reduce button height
-                  child: IconButton(
-                    icon: Icon(Icons.arrow_drop_up, size: 16), // Smaller icon
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
-                    onPressed: () {
-                      int currentValue = int.tryParse(controller.text) ?? 0;
-                      setState(() {
-                        controller.text = (currentValue + 1).toString();
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(
-                  height: 14, // Reduce button height
-                  child: IconButton(
-                    icon: Icon(Icons.arrow_drop_down, size: 16), // Smaller icon
-                    padding: EdgeInsets.zero,
-                    constraints: BoxConstraints(),
-                    onPressed: () {
-                      int currentValue = int.tryParse(controller.text) ?? 0;
-                      if (currentValue > 0) {
-                        setState(() {
-                          controller.text = (currentValue - 1).toString();
-                        });
-                      }
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }

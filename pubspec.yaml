@@ -35,6 +35,7 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   qr_code_scanner: ^1.0.1
+  qr_code_scanner_plus: ^2.0.13
   http: ^0.13.6
   qr_flutter: ^4.1.0
   screenshot: ^3.0.0
@@ -46,7 +47,6 @@ dependencies:
   hive: ^2.2.3
   hive_flutter: ^1.1.0
   hive_generator: ^2.0.1
-  build_runner: ^2.4.14
   shared_preferences: ^2.0.6
   permission_handler: ^11.4.0
   device_preview: ^1.1.0
@@ -56,7 +56,8 @@ dependencies:
   # open_settings: ^2.0.2
   collection: ^1.17.0
   provider: ^6.0.5
-  intl: ^0.18.0
+  intl: ^0.20.2
+  syncfusion_flutter_xlsio: ^28.1.41
 
 
 
@@ -64,8 +65,8 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   hive_generator: ^2.0.1
-  build_runner: ^2.3.3
   flutter_launcher_icons: ^0.13.1 
+  build_runner: 2.4.13
 
 flutter_icons:
   android: true

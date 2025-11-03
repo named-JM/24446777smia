@@ -20,26 +20,39 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Future<void> fetchCategories() async {
-    final response = await http.get(Uri.parse('$BASE_URL/get_categories.php'));
-    if (response.statusCode == 200) {
-      setState(() {
-        categories = jsonDecode(response.body)["categories"];
-      });
+    try {
+      final url = '$BASE_URL/Category/all';
+      print("🔍 FETCH: $url");
+
+      final response = await http.get(Uri.parse(url));
+      print("🔍 CODE: ${response.statusCode}");
+      print("🔍 BODY: ${response.body}");
+
+      if (response.statusCode == 200) {
+        setState(() {
+          categories = jsonDecode(response.body)["categories"];
+        });
+      } else {
+        throw Exception("HTTP ${response.statusCode}");
+      }
+    } catch (e) {
+      print("❌ Error fetching: $e");
     }
-    print("Categories: $categories");
   }
 
   Future<void> addCategory() async {
     if (categoryController.text.isEmpty) return;
 
     final response = await http.post(
-      Uri.parse('$BASE_URL/add_category.php'),
+      Uri.parse('$BASE_URL/Category/add'),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"name": categoryController.text}),
     );
 
     print("Response Code: ${response.statusCode}");
     print("Response Body: ${response.body}");
+    print("🔍 CODE: ${response.statusCode}");
+    print("🔍 BODY: ${response.body}");
 
     if (response.statusCode != 200) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -67,14 +80,19 @@ class _CategoryPageState extends State<CategoryPage> {
   }
 
   Future<void> deleteCategory(dynamic id) async {
-    // Ensure the id is an integer
-    final int categoryId = int.tryParse(id.toString()) ?? id;
-
-    final response = await http.post(
-      Uri.parse('$BASE_URL/delete_category.php'),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"id": categoryId}),
+    final response = await http.delete(
+      Uri.parse('$BASE_URL/Category/delete/$id'),
     );
+
+    print("Delete Response Code: ${response.statusCode}");
+    print("Delete Response Body: ${response.body}");
+
+    if (response.statusCode != 200) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Server error: ${response.statusCode}")),
+      );
+      return;
+    }
 
     try {
       final result = jsonDecode(response.body);
@@ -87,9 +105,6 @@ class _CategoryPageState extends State<CategoryPage> {
       }
     } catch (e) {
       print("Error decoding JSON: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Invalid response format")));
     }
   }
 

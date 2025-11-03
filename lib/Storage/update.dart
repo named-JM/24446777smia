@@ -443,7 +443,7 @@ class _UpdateItemPageState extends State<UpdateItemPage> {
               ), // New field for brand
               SizedBox(height: 10),
               DropdownButtonFormField<String>(
-                value:
+                initialValue:
                     categories.contains(selectedCategory)
                         ? selectedCategory
                         : null, // Prevents invalid value
