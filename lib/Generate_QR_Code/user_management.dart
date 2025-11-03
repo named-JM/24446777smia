@@ -145,7 +145,7 @@ class _UserManagementState extends State<UserManagement> {
                       decoration: const InputDecoration(labelText: "Password"),
                     ),
                     DropdownButtonFormField<String>(
-                      value: selectedRole,
+                      initialValue: selectedRole,
                       items:
                           ['admin', 'user']
                               .map(
@@ -192,7 +192,7 @@ class _UserManagementState extends State<UserManagement> {
           (context) => AlertDialog(
             title: Text("Edit Role for ${user.firstName}"),
             content: DropdownButtonFormField<String>(
-              value: selectedRole,
+              initialValue: selectedRole,
               items:
                   ['admin', 'user']
                       .map(

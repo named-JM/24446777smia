@@ -408,7 +408,7 @@ class _UpdateItemOfflineState extends State<UpdateItemOffline> {
               SizedBox(height: 10),
 
               DropdownButtonFormField<String>(
-                value: selectedCategory,
+                initialValue: selectedCategory,
                 onChanged: (value) {
                   setState(() {
                     selectedCategory = value;

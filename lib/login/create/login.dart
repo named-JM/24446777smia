@@ -69,7 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       try {
         final response = await http.get(
-          Uri.parse("$BASE_URL/check_connection.php"),
+          Uri.parse("$BASE_URL/Auth/check_connection"),
         );
 
         if (response.statusCode == 200) {
@@ -133,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    final response = await http.get(Uri.parse("$BASE_URL/get_items.php"));
+    final response = await http.get(Uri.parse("$BASE_URL/Inventory/get_items"));
 
     if (response.statusCode == 200) {
       Map<String, dynamic> jsonResponse = jsonDecode(response.body);
@@ -167,43 +167,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Sync offline updates to the server
-  /// This function retrieves pending updates from the Hive database and sends them to the server.
-  /// It also clears the pending updates after a successful sync.
-  // Future<void> syncOfflineUpdates() async {
-  //   final pendingUpdatesBox = await Hive.openBox('pending_updates');
-
-  //   if (pendingUpdatesBox.isNotEmpty) {
-  //     List<Map<String, dynamic>> updates = [];
-
-  //     for (var item in pendingUpdatesBox.values) {
-  //       updates.add({
-  //         'qr_code_data': item['qr_code_data'],
-  //         'quantity_removed':
-  //             item['quantity_removed'] ?? 0, // Default to 0 if null
-  //         'quantity_added': item['quantity_added'] ?? 0, // Default to 0 if null
-  //       });
-  //     }
-
-  //     final response = await http.post(
-  //       Uri.parse('$BASE_URL/sync_updates.php'),
-  //       body: jsonEncode({'updates': updates}),
-  //       headers: {'Content-Type': 'application/json'},
-  //     );
-
-  //     if (response.statusCode == 200) {
-  //       final result = jsonDecode(response.body);
-  //       if (result['success']) {
-  //         await pendingUpdatesBox.clear(); // Clear synced updates
-  //         print("Offline updates synced successfully!");
-  //       } else {
-  //         print("Sync failed: ${result['message']}");
-  //       }
-  //     } else {
-  //       print("Failed to sync offline updates.");
-  //     }
-  //   }
-  // }
   Future<void> loginUser(BuildContext context) async {
     final String email = emailController.text;
     final String password = passwordController.text;
@@ -218,7 +181,7 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     try {
-      final String apiUrl = "$BASE_URL/login.php";
+      final String apiUrl = "$BASE_URL/Auth/login";
       final response = await http.post(
         Uri.parse(apiUrl),
         body: {"email_address": email, "password": password},
@@ -273,7 +236,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // Function to fetch the full user data from the backend
   Future<void> _fetchUserData(String userID, UserProvider userProvider) async {
     try {
-      final String userApiUrl = "$BASE_URL/get_user_details.php";
+      final String userApiUrl = "$BASE_URL/Auth/get_user_details";
       final response = await http.post(
         Uri.parse(userApiUrl),
         body: {"u_id": userID},
@@ -309,73 +272,6 @@ class _LoginScreenState extends State<LoginScreen> {
       print("Error fetching user details: $e");
     }
   }
-
-  //latest loginuser
-  // Future<void> loginUser(BuildContext context) async {
-  //   final String email = emailController.text;
-  //   final String password = passwordController.text;
-
-  //   if (email.isEmpty || password.isEmpty) {
-  //     if (mounted) {
-  //       ScaffoldMessenger.of(
-  //         context,
-  //       ).showSnackBar(SnackBar(content: Text('Please fill in all fields')));
-  //     }
-  //     return;
-  //   }
-
-  //   var connectivityResult = await Connectivity().checkConnectivity();
-  //   if (connectivityResult == ConnectivityResult.none) {
-  //     await offlineLogin(email, password);
-  //     return;
-  //   }
-
-  //   try {
-  //     final String apiUrl = "$BASE_URL/login.php";
-  //     final response = await http.post(
-  //       Uri.parse(apiUrl),
-  //       body: {"email_address": email, "password": password},
-  //     );
-
-  //     if (response.statusCode == 200 && response.body.isNotEmpty) {
-  //       final data = jsonDecode(response.body);
-  //       print("Server Response: ${response.body}");
-  //       if (data["status"] == "success") {
-  //         final userID =
-  //             data["u_id"].toString(); // Get userID from the server response
-  //         print("User ID from server: $userID"); // Debugging userID
-
-  //         //set userid in user provider
-  //         final userProvider = Provider.of<UserProvider>(
-  //           context,
-  //           listen: false,
-  //         );
-  //         userProvider.setUserID(userID); // Set userID in the provider
-
-  //         SharedPreferences prefs = await SharedPreferences.getInstance();
-  //         await prefs.setString('email', email);
-  //         await prefs.setString('password', password);
-
-  //         if (mounted) {
-  //           ScaffoldMessenger.of(
-  //             context,
-  //           ).showSnackBar(SnackBar(content: Text("Login successful!")));
-  //         }
-  //         Navigator.pushReplacement(
-  //           context,
-  //           MaterialPageRoute(builder: (context) => HomeScreen()),
-  //         );
-  //       } else {
-  //         showErrorMessage(data["message"] ?? "Login failed. Try again.");
-  //       }
-  //     } else {
-  //       showErrorMessage("Server error. Please try again later.");
-  //     }
-  //   } catch (e) {
-  //     print("Login Error: $e"); // Debugging
-  //     showErrorMessage("An error occurred. Please try again.");
-  //   }
-  // }
 
   Future<void> offlineLogin(String email, String password) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
